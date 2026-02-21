@@ -1,0 +1,28 @@
+# ── Training framework ────────────────────────────────────────────────────────
+# Pin upper bounds to prevent silent API breakage
+axolotl[deepspeed]>=0.6.0,<1.0
+torch>=2.3.0,<3.0
+transformers>=4.47.0,<5.0
+peft>=0.14.0,<1.0
+accelerate>=0.34.0,<2.0
+bitsandbytes>=0.44.0          # optional — kept for 8-bit/4-bit experiments
+
+# ── Data pipeline ─────────────────────────────────────────────────────────────
+wikiextractor>=3.0.6
+pymupdf>=1.24.0,<2.0          # PyMuPDF — import as fitz
+datasets>=3.0.0,<4.0
+datasketch>=1.6.4
+
+# ── Tokenizer support ─────────────────────────────────────────────────────────
+sentencepiece                  # required by some Mistral tokenizer variants
+protobuf
+
+# ── Utilities ─────────────────────────────────────────────────────────────────
+tqdm
+huggingface_hub>=0.26.0,<2.0
+
+# ── Flash Attention (install separately — requires matching CUDA toolkit) ─────
+# pip install flash-attn --no-build-isolation
+#
+# ── Dev / linting (not needed for training) ───────────────────────────────────
+# pip install ruff mypy

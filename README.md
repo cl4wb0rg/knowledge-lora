@@ -1,0 +1,245 @@
+# knowledge-lora
+
+Continued Pretraining (CPT) + Supervised Fine-Tuning (SFT) LoRA adapter for
+**[Ministral-3-14B-Base-2512](https://huggingface.co/mistralai/Ministral-3-14B-Base-2512)**,
+trained on German Wikipedia and custom documents (PDFs, Markdown) to extend the
+model's knowledge cutoff.
+
+## Architecture overview
+
+```
+Wikipedia dump ──┐
+PDF files        ├── Data Pipeline ──► deduplicated corpus ──► CPT LoRA ──► SFT LoRA
+Markdown files ──┘                       (corpus.jsonl)         (rank 128)   (rank 64)
+```
+
+**Phase 1 – CPT:** The base model learns new factual knowledge via next-token prediction
+on the cleaned corpus (LoRA rank 128, full BF16, seq_len 8192).
+
+**Phase 2 – SFT:** The CPT adapter is used as a starting point for instruction-following
+fine-tuning on template-generated Q&A / summarisation data (LoRA rank 64, lr 2e-5).
+
+## Hardware requirements
+
+| Component | Minimum | Recommended |
+|---|---|---|
+| GPU VRAM / unified memory | 24 GB (with QLoRA) | 128 GB (DGX Spark / GB10) |
+| Storage for German Wikipedia | ~25 GB raw | ~60 GB with intermediates |
+| Python | 3.11+ | 3.11+ |
+
+Training was designed for the **Dell GB10 / NVIDIA DGX Spark** (128 GB unified
+Blackwell memory) — full BF16 with no quantisation.
+
+## Installation
+
+```bash
+# 1. Clone
+git clone https://github.com/cl4wb0rg/knowledge-lora.git
+cd knowledge-lora
+
+# 2. Create virtual environment
+python -m venv .venv
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
+
+# 3. Install dependencies
+pip install -r requirements.txt
+
+# 4. Install Flash Attention (requires matching CUDA toolkit)
+pip install flash-attn --no-build-isolation
+
+# 5. Configure credentials
+cp .env.example .env
+# Edit .env and add your HuggingFace token
+```
+
+## Data pipeline
+
+Run the steps in order. All steps are idempotent — re-running skips already
+completed work where possible.
+
+### Step 1 — Download Wikipedia
+
+```bash
+python scripts/01_download_wiki.py --lang de
+# For multiple languages:
+python scripts/01_download_wiki.py --lang de --lang en --lang fr
+```
+
+Downloads `data/raw/dewiki-latest-pages-articles.xml.bz2` and verifies the MD5
+checksum against Wikimedia's published checksums.
+
+### Step 2 — Extract Wikipedia text
+
+```bash
+python scripts/02_extract_wiki.py \
+    --dump data/raw/dewiki-latest-pages-articles.xml.bz2 \
+    --lang de
+```
+
+Produces `data/processed/wikipedia_de.jsonl`.
+Uses all available CPU cores by default.
+
+### Step 3 — Extract PDFs (optional)
+
+```bash
+python scripts/03_extract_pdfs.py --input-dir /path/to/your/pdfs
+```
+
+Produces `data/processed/pdfs.jsonl`.
+
+### Step 4 — Extract Markdown / text files (optional)
+
+```bash
+python scripts/04_extract_markdown.py --input-dir /path/to/your/docs
+```
+
+Supports `.md`, `.markdown`, `.txt`, `.rst`.
+Produces `data/processed/markdown.jsonl`.
+
+### Step 5 — Deduplicate
+
+```bash
+python scripts/05_clean_deduplicate.py \
+    --input-files \
+        data/processed/wikipedia_de.jsonl \
+        data/processed/pdfs.jsonl \
+        data/processed/markdown.jsonl \
+    --output-file data/processed/corpus.jsonl
+```
+
+Two-stage deduplication: exact (SHA-256) + near-duplicate (MinHash LSH, Jaccard ≥ 0.8).
+
+### Step 6 — Tokenize
+
+```bash
+HF_TOKEN=hf_... python scripts/06_tokenize.py \
+    --input data/processed/corpus.jsonl \
+    --model-id mistralai/Ministral-3-14B-Base-2512 \
+    --seq-len 8192
+```
+
+Produces a packed Arrow dataset at `data/tokenized/cpt_dataset/`.
+Memory usage is bounded by `--batch-size` regardless of corpus size.
+
+### Step 7 — Generate SFT data
+
+```bash
+python scripts/07_create_sft_data.py \
+    --input data/processed/corpus.jsonl \
+    --output data/processed/sft_data.jsonl \
+    --max-docs 200000
+```
+
+Creates template-based summarisation, Q&A, and text-continuation examples.
+
+## Training
+
+### Phase 1: Continued Pretraining (CPT)
+
+```bash
+source .env          # loads HF_TOKEN, WANDB_* etc.
+bash train_cpt.sh
+```
+
+Training checkpoints are saved to `output/cpt/`.
+See [`configs/cpt_config.yaml`](configs/cpt_config.yaml) for all hyperparameters.
+
+Key settings (DGX Spark / 128 GB):
+
+| Parameter | Value | Notes |
+|---|---|---|
+| LoRA rank | 128 | Higher rank → more capacity for new knowledge |
+| Sequence length | 8192 | Increase to 16384 if needed |
+| Learning rate | 1e-4 | Standard for CPT |
+| Precision | BF16 | No quantisation on 128 GB |
+| Epochs | 1 | One pass is typically sufficient |
+
+### Phase 2: Supervised Fine-Tuning (SFT)
+
+After CPT completes, update `configs/sft_config.yaml` to point to the best
+CPT checkpoint:
+
+```yaml
+# configs/sft_config.yaml — uncomment this line:
+lora_weights: ./output/cpt/checkpoint-XXXX
+```
+
+Then run:
+
+```bash
+bash train_sft.sh
+```
+
+Output: `output/sft/`.
+
+### Merge and export
+
+```bash
+# Merge LoRA weights into the base model for standalone deployment
+accelerate launch -m axolotl.cli.merge_lora configs/sft_config.yaml \
+    --lora-model-dir output/sft
+```
+
+## Project structure
+
+```
+knowledge-lora/
+├── scripts/
+│   ├── 01_download_wiki.py       # Download Wikipedia dumps
+│   ├── 02_extract_wiki.py        # Parse XML → JSONL
+│   ├── 03_extract_pdfs.py        # PDF → JSONL
+│   ├── 04_extract_markdown.py    # MD/RST/TXT → JSONL
+│   ├── 05_clean_deduplicate.py   # SHA-256 + MinHash LSH dedup
+│   ├── 06_tokenize.py            # Tokenise + pack → Arrow dataset
+│   └── 07_create_sft_data.py     # Template-based SFT data
+├── configs/
+│   ├── cpt_config.yaml           # Axolotl CPT config
+│   └── sft_config.yaml           # Axolotl SFT config
+├── data/                         # Git-ignored; created at runtime
+│   ├── raw/
+│   ├── processed/
+│   └── tokenized/
+├── output/                       # Git-ignored; training checkpoints
+├── .github/workflows/ci.yml      # Lint + type-check CI
+├── .env.example                  # Credential template
+├── pyproject.toml                # ruff + mypy config
+├── requirements.txt
+├── train_cpt.sh
+├── train_sft.sh
+└── LICENSE                       # Apache 2.0
+```
+
+## Adding more languages
+
+The pipeline is language-agnostic. To add English Wikipedia:
+
+```bash
+python scripts/01_download_wiki.py --lang en
+python scripts/02_extract_wiki.py --dump data/raw/enwiki-latest-pages-articles.xml.bz2 --lang en
+```
+
+Then include `data/processed/wikipedia_en.jsonl` in the `--input-files` list
+for step 5. Earlier files in the list take priority during deduplication.
+
+## Security notes
+
+- **HF tokens** are read from the `HF_TOKEN` environment variable. Never pass
+  tokens as CLI arguments (they appear in process listings and shell history).
+- **Downloaded dumps** are verified against Wikimedia's published MD5 checksums
+  before being used.
+- **File paths** stored in JSONL output are always relative to the input directory
+  to avoid leaking host filesystem layout.
+- **Partial downloads** are written to a `.tmp` file and renamed atomically only
+  on success. A crashed download will not leave a corrupt file at the canonical path.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## License
+
+Apache License 2.0 — see [LICENSE](LICENSE).
+
+The base model (Ministral-3-14B-Base-2512) is also licensed under Apache 2.0.
+Wikipedia content is licensed under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).
+Ensure your custom PDFs and Markdown files are licensed for training use.

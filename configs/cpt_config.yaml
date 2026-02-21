@@ -1,0 +1,80 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# Axolotl — Continued Pretraining (CPT) config
+# Model  : Ministral-3-14B-Base-2512
+# HW     : Dell GB10 / DGX Spark  (128 GB unified memory, Blackwell GPU)
+# Goal   : Inject new knowledge (Wikipedia DE + PDFs + Markdown) via LoRA
+# ═══════════════════════════════════════════════════════════════════════════════
+
+base_model: mistralai/Ministral-3-14B-Base-2512
+model_type: AutoModelForCausalLM
+tokenizer_type: AutoTokenizer
+
+# ── precision ────────────────────────────────────────────────────────────────
+# 128 GB unified mem → no quantization needed; full BF16
+load_in_8bit: false
+load_in_4bit: false
+bf16: true
+fp16: false
+tf32: false
+
+# ── dataset ──────────────────────────────────────────────────────────────────
+datasets:
+  - path: data/tokenized/cpt_dataset
+    ds_type: arrow          # pre-tokenized Arrow dataset from 06_tokenize.py
+    type: pretrain
+
+dataset_prepared_path: null
+val_set_size: 0.002         # 0.2 % held out for validation
+seed: 42
+
+# ── sequence / packing ───────────────────────────────────────────────────────
+sequence_len: 8192           # increase to 16384 if you want longer context
+sample_packing: true         # pack multiple short docs into one sequence
+pad_to_sequence_len: true
+
+# ── LoRA ─────────────────────────────────────────────────────────────────────
+adapter: lora
+lora_r: 128                  # high rank for CPT (more capacity needed)
+lora_alpha: 128              # alpha = r → effective scale = 1.0
+lora_dropout: 0.05
+lora_target_linear: true     # target ALL linear projection layers
+lora_fan_in_fan_out: false
+# Explicit target modules (Mistral architecture):
+lora_modules_to_save: []     # nothing needs to be saved fully (no new tokens)
+
+# ── training hyperparameters ─────────────────────────────────────────────────
+num_epochs: 1                # one pass over the corpus is usually enough for CPT
+micro_batch_size: 2
+gradient_accumulation_steps: 8   # effective batch = 2 × 8 = 16
+optimizer: adamw_torch_fused
+lr_scheduler: cosine
+learning_rate: 0.0001        # 1e-4 — standard for CPT
+warmup_ratio: 0.05
+weight_decay: 0.01
+max_grad_norm: 1.0
+
+# ── memory efficiency ─────────────────────────────────────────────────────────
+gradient_checkpointing: true
+gradient_checkpointing_kwargs:
+  use_reentrant: false
+flash_attention: true        # requires flash-attn package; install separately
+
+# ── checkpointing & logging ───────────────────────────────────────────────────
+output_dir: ./output/cpt
+logging_steps: 10
+eval_steps: 500
+save_steps: 500
+save_total_limit: 3
+load_best_model_at_end: false   # keep last for CPT (best on val_loss can overfit)
+
+# ── HuggingFace Hub (optional) ────────────────────────────────────────────────
+# hub_model_id: your-org/ministral-14b-de-cpt-lora
+# hub_strategy: checkpoint
+
+# ── Weights & Biases (optional) ──────────────────────────────────────────────
+# wandb_project: ministral-14b-lora
+# wandb_run_name: cpt-de-wiki
+
+# ── tokenizer ────────────────────────────────────────────────────────────────
+special_tokens:
+  pad_token: "<pad>"         # add if tokenizer has no pad token

@@ -1,0 +1,83 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# Axolotl — Supervised Fine-Tuning (SFT) config
+# Model  : Ministral-3-14B-Base-2512 + CPT LoRA adapter
+# HW     : Dell GB10 / DGX Spark  (128 GB unified memory)
+# Goal   : Teach instruction-following on top of the CPT adapter
+# ═══════════════════════════════════════════════════════════════════════════════
+
+base_model: mistralai/Ministral-3-14B-Base-2512
+model_type: AutoModelForCausalLM
+tokenizer_type: AutoTokenizer
+
+# Load the CPT adapter as starting point instead of raw base weights
+# Uncomment after CPT training completes:
+# lora_weights: ./output/cpt/checkpoint-final
+
+# ── precision ────────────────────────────────────────────────────────────────
+load_in_8bit: false
+load_in_4bit: false
+bf16: true
+fp16: false
+tf32: false
+
+# ── dataset ──────────────────────────────────────────────────────────────────
+datasets:
+  - path: data/processed/sft_data.jsonl
+    type: alpaca              # matches instruction / input / output fields
+    # Alternatively switch to "sharegpt" if you convert to conversation format
+
+dataset_prepared_path: null
+val_set_size: 0.01            # 1 % for eval
+seed: 42
+
+# ── sequence ─────────────────────────────────────────────────────────────────
+sequence_len: 4096
+sample_packing: false         # off for SFT — each sample is one conversation
+pad_to_sequence_len: true
+
+# ── LoRA ─────────────────────────────────────────────────────────────────────
+adapter: lora
+lora_r: 64                    # lower rank than CPT — SFT needs less capacity
+lora_alpha: 64
+lora_dropout: 0.05
+lora_target_linear: true
+lora_fan_in_fan_out: false
+
+# ── training hyperparameters ─────────────────────────────────────────────────
+num_epochs: 3
+micro_batch_size: 4
+gradient_accumulation_steps: 4    # effective batch = 4 × 4 = 16
+optimizer: adamw_torch_fused
+lr_scheduler: cosine
+learning_rate: 0.00002            # 2e-5 — lower LR for SFT
+warmup_ratio: 0.03
+weight_decay: 0.01
+max_grad_norm: 1.0
+
+# ── memory efficiency ─────────────────────────────────────────────────────────
+gradient_checkpointing: true
+gradient_checkpointing_kwargs:
+  use_reentrant: false
+flash_attention: true
+
+# ── chat template ─────────────────────────────────────────────────────────────
+# Use Mistral's default instruction format
+chat_template: mistral        # or "alpaca" if you prefer that prompt style
+
+# ── checkpointing & logging ───────────────────────────────────────────────────
+output_dir: ./output/sft
+logging_steps: 10
+eval_steps: 200
+save_steps: 200
+save_total_limit: 3
+load_best_model_at_end: true    # for SFT we want the best checkpoint by eval loss
+metric_for_best_model: eval_loss
+greater_is_better: false
+
+# ── HuggingFace Hub (optional) ────────────────────────────────────────────────
+# hub_model_id: your-org/ministral-14b-de-sft-lora
+# hub_strategy: end
+
+# ── Weights & Biases (optional) ──────────────────────────────────────────────
+# wandb_project: ministral-14b-lora
+# wandb_run_name: sft-de-wiki

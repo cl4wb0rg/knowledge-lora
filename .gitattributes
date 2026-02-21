@@ -1,0 +1,15 @@
+# Ensure consistent line endings across platforms
+* text=auto
+
+# Shell scripts must use LF (they break with CRLF on Linux/macOS)
+*.sh text eol=lf
+
+# Python files — LF
+*.py text eol=lf
+
+# YAML / TOML / config files — LF
+*.yaml text eol=lf
+*.toml text eol=lf
+
+# Documentation — auto
+*.md text eol=lf

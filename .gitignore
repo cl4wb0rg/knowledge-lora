@@ -1,0 +1,58 @@
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# ── Virtual environments ──────────────────────────────────────────────────────
+.venv/
+venv/
+env/
+ENV/
+
+# ── Environment / secrets ─────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+
+# ── Claude Code internal ──────────────────────────────────────────────────────
+.claude/
+
+# ── Data (large files — never commit, but keep directory structure) ───────────
+data/raw/*
+data/processed/*
+data/tokenized/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+!data/tokenized/.gitkeep
+
+# ── Training outputs (model weights — too large for git) ─────────────────────
+output/*
+!output/.gitkeep
+
+# ── IDE ───────────────────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.iml
+
+# ── OS ────────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── Logs ─────────────────────────────────────────────────────────────────────
+*.log
+wandb/
+runs/
+
+# ── Jupyter ───────────────────────────────────────────────────────────────────
+.ipynb_checkpoints/
+*.ipynb
+
+# ── Type-check / lint caches ─────────────────────────────────────────────────
+.mypy_cache/
+.ruff_cache/
