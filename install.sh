@@ -77,9 +77,11 @@ pip install "xformers==0.0.28.post2" \
 # breaks flash-attn (compiled C extensions become ABI-incompatible).
 # Use a separate venv for vLLM inference — see install_vllm.sh.
 
-echo "==> Step 6: flash-attn (built from source — takes a few minutes)"
+echo "==> Step 6: flash-attn (built from source against CUDA 13.0 — takes ~10 min)"
 pip install wheel --quiet  # flash-attn setup.py requires 'wheel' in the venv
-pip install flash-attn --no-build-isolation
+# --no-binary forces source build; the pre-built wheel links libcudart.so.12
+# (CUDA 12) which is absent on this system (CUDA 13.0).
+pip install flash-attn --no-build-isolation --no-binary flash-attn
 
 echo ""
 echo "==> Dependency check"
