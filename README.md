@@ -52,7 +52,7 @@ cp .env.example .env
 > **DGX Spark / CUDA 13.0 notes:**
 > - `install.sh` handles the correct installation order for torch, axolotl (GitHub HEAD), flash-attn, and xformers.
 > - **xformers** cannot be built for CUDA 13.0 (removed driver API symbols) and is skipped; flash-attn covers the same functionality.
-> - **flash-attn** is built from source against CUDA 13.0 (no pre-built cu13 wheel exists). The build uses `MAX_JOBS=2` to avoid OOM from parallel nvcc processes. **Expect ~20–30 minutes** for this step.
+> - **flash-attn** is built from source against CUDA 13.0 (no pre-built cu13 wheel exists). The build uses `MAX_JOBS=1` and `nice -n 10` to stay below 80 % CPU/RAM load. **Expect ~20–30 minutes on first install**; subsequent runs skip the build if flash-attn is already correctly installed.
 > - axolotl is installed from GitHub HEAD; PyPI releases do not support torch 2.10+.
 
 ### vLLM inference environment (optional)

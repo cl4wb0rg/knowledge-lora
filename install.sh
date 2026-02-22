@@ -79,18 +79,28 @@ pip install "xformers==0.0.28.post2" \
 
 echo "==> Step 6: flash-attn (built from source against CUDA 13.0 — takes ~20 min)"
 pip install wheel --quiet  # flash-attn setup.py requires 'wheel' in the venv
-# --no-binary forces source build; the pre-built wheel links libcudart.so.12
-# (CUDA 12) which is absent on this system (CUDA 13.0).
-# MAX_JOBS=2 prevents OOM: default -j10 spawns 10 parallel nvcc processes,
-# each compiling for 4 GPU architectures — enough to exhaust unified memory.
-# --extra-index-url: flash-attn's --force-reinstall re-resolves torch; pointing
-# at the CUDA index prevents pip from pulling the CPU build from plain PyPI.
-MAX_JOBS=2 pip install flash-attn \
-    --no-build-isolation \
-    --no-binary flash-attn \
-    --force-reinstall \
-    --no-cache-dir \
-    --extra-index-url "${TORCH_INDEX}"
+
+# Skip rebuild if flash-attn already imports correctly (saves ~20 min on re-runs).
+if python -c "import flash_attn; import torch; assert torch.version.cuda is not None" 2>/dev/null; then
+    echo "    flash-attn already installed and torch CUDA OK — skipping rebuild"
+else
+    # --no-binary forces source build; the pre-built wheel links libcudart.so.12
+    # (CUDA 12) which is absent on this system (CUDA 13.0).
+    # MAX_JOBS=1 limits to one parallel nvcc process to stay below 80% CPU/RAM.
+    # nice -n 10 reduces build priority so the system stays responsive.
+    # --extra-index-url: prevents pip from pulling CPU torch from plain PyPI
+    #   when re-resolving flash-attn's deps.
+    echo "    starting build (output visible so terminal stays 'alive')..."
+    ( while true; do sleep 60; echo "    [flash-attn still building...]"; done ) &
+    _HEARTBEAT=$!
+    MAX_JOBS=1 nice -n 10 pip install flash-attn \
+        --no-build-isolation \
+        --no-binary flash-attn \
+        --force-reinstall \
+        --no-cache-dir \
+        --extra-index-url "${TORCH_INDEX}"
+    kill "$_HEARTBEAT" 2>/dev/null; wait "$_HEARTBEAT" 2>/dev/null || true
+fi
 
 echo "==> Step 6b: re-pin torch+cu130 and fsspec (flash-attn dep resolver may replace them)"
 # --force-reinstall above can still pull CPU torch or a newer fsspec from PyPI.
