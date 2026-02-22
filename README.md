@@ -56,6 +56,26 @@ cp .env.example .env
 > - **GB10 freeze prevention:** before each flash-attn build, `install.sh` clears the filesystem cache and caps GPU power to 80 % of its maximum (via `nvidia-smi -pl`) to prevent hard crashes from memory exhaustion or power spikes during nvcc compilation. Requires `sudo`; silently skipped if unavailable. The power limit is restored after the build completes. The flash-attn build subprocess also sets a high OOM score (`oom_score_adj=500`) so the kernel kills it first if memory runs out, keeping the system responsive.
 > - axolotl is installed from GitHub HEAD; PyPI releases do not support torch 2.10+.
 
+### Verify the installation
+
+After `install.sh` completes, run the smoke test to confirm the full training
+stack (torch CUDA, flash-attn, LoRA, forward/backward pass) works end-to-end.
+No large model download or pre-processed data needed — it uses `gpt2` (124 M)
+with synthetic inputs.
+
+```bash
+python scripts/smoke_test.py
+# Expected output:
+#   [OK]  torch 2.10.0+cu130  |  NVIDIA GB10  |  120 GB
+#   [OK]  flash-attn 2.8.3
+#   [OK]  gpt2 loaded on cuda (bf16)
+#   [OK]  LoRA applied  |  trainable 147.5K / 124.6M params
+#     step 1/5  loss=...
+#     ...
+#   [OK]  all losses finite  |  first=...  last=...
+#   === PASSED ===
+```
+
 ### vLLM inference environment (optional)
 
 vLLM requires a different torch version than axolotl and must live in its own venv:
@@ -222,6 +242,7 @@ accelerate launch -m axolotl.cli.merge_lora configs/sft_config.yaml \
 ```
 knowledge-lora/
 ├── scripts/
+│   ├── smoke_test.py             # Quick stack check (torch+CUDA, flash-attn, LoRA)
 │   ├── 01_download_wiki.py       # Download Wikipedia dumps
 │   ├── 02_extract_wiki.py        # Parse XML → JSONL
 │   ├── 03_extract_pdfs.py        # PDF → JSONL
