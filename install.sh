@@ -81,7 +81,11 @@ echo "==> Step 6: flash-attn (built from source against CUDA 13.0 — takes ~10 
 pip install wheel --quiet  # flash-attn setup.py requires 'wheel' in the venv
 # --no-binary forces source build; the pre-built wheel links libcudart.so.12
 # (CUDA 12) which is absent on this system (CUDA 13.0).
-pip install flash-attn --no-build-isolation --no-binary flash-attn
+pip install flash-attn \
+    --no-build-isolation \
+    --no-binary flash-attn \
+    --force-reinstall \
+    --no-cache-dir
 
 echo ""
 echo "==> Dependency check"
