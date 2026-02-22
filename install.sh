@@ -28,18 +28,16 @@ else
 fi
 
 echo "==> Step 2: Axolotl + DeepSpeed"
-# Install axolotl BEFORE pinning its transitive deps (transformers, peft, etc.).
-# --no-build-isolation makes the already-installed torch visible to xformers
-# if it attempts a source build; we also skip xformers explicitly via constraint.
-pip install "axolotl[deepspeed]>=0.6.0,<1.0" \
+# PyPI releases of axolotl lag behind torch nightlies — all versions fail with
+# ResolutionImpossible when torch >= 2.7 (nightly) is installed.
+# Installing from GitHub HEAD picks up the latest dependency bounds.
+TORCH_VER=$(python -c "import torch; print(torch.__version__)" 2>/dev/null || echo "unknown")
+echo "    detected torch ${TORCH_VER}"
+pip install \
+    "axolotl[deepspeed] @ git+https://github.com/axolotl-ai-cloud/axolotl.git" \
     --extra-index-url "${TORCH_INDEX}" \
     --no-build-isolation \
-    --constraint <(echo "xformers==0.0.0" 2>/dev/null || true) \
-    --quiet \
-    || pip install "axolotl[deepspeed]>=0.6.0,<1.0" \
-        --extra-index-url "${TORCH_INDEX}" \
-        --no-build-isolation \
-        --quiet
+    --quiet
 
 echo "==> Step 3: Data pipeline"
 pip install \
