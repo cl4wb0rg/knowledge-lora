@@ -42,9 +42,11 @@ pip install \
 echo "==> Step 2b: Align packages with axolotl HEAD requirements"
 # axolotl 0.15.0.dev0 pins transformers and huggingface-hub to specific
 # versions. Upgrading here prevents runtime import errors.
+# numpy is required by flash-attn C extensions at import time.
 pip install \
     "transformers==5.2.0" \
     "huggingface-hub>=1.1.7" \
+    numpy \
     --quiet
 
 echo "==> Step 3: Data pipeline"
