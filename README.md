@@ -51,9 +51,9 @@ cp .env.example .env
 
 > **DGX Spark / CUDA 13.0 notes:**
 > - `install.sh` handles the correct installation order for torch, axolotl (GitHub HEAD), flash-attn, and xformers.
-> - **xformers** cannot be built for CUDA 13.0 (removed driver API symbols) and is skipped; flash-attn covers the same functionality.
+> - **xformers** cannot be built for CUDA 13.0 (removed driver API symbols) and is skipped. `install.sh` uses `--only-binary xformers` so pip never attempts a source compile — previously, the source build spawned many parallel `nvcc`/`cicc` processes that exhausted all RAM+swap and froze the system. flash-attn covers the same functionality.
 > - **flash-attn** is built from source against CUDA 13.0 (no pre-built cu13 wheel exists). The build uses `MAX_JOBS=1` and `nice -n 10` to stay below 80 % CPU/RAM load. **Expect ~20–30 minutes on first install**; subsequent runs skip the build if flash-attn is already correctly installed.
-> - **GB10 freeze prevention:** before each flash-attn build, `install.sh` clears the filesystem cache and caps GPU power to 80 % of its maximum (via `nvidia-smi -pl`) to prevent hard crashes from memory exhaustion or power spikes during nvcc compilation. Requires `sudo`; silently skipped if unavailable. The power limit is restored after the build completes.
+> - **GB10 freeze prevention:** before each flash-attn build, `install.sh` clears the filesystem cache and caps GPU power to 80 % of its maximum (via `nvidia-smi -pl`) to prevent hard crashes from memory exhaustion or power spikes during nvcc compilation. Requires `sudo`; silently skipped if unavailable. The power limit is restored after the build completes. The flash-attn build subprocess also sets a high OOM score (`oom_score_adj=500`) so the kernel kills it first if memory runs out, keeping the system responsive.
 > - axolotl is installed from GitHub HEAD; PyPI releases do not support torch 2.10+.
 
 ### vLLM inference environment (optional)

@@ -61,13 +61,16 @@ echo "==> Step 4: bitsandbytes (optional, for 8-bit experiments)"
 pip install "bitsandbytes>=0.44.0" --quiet \
     || echo "    bitsandbytes skipped (non-critical)"
 
-echo "==> Step 5: xformers (best-effort — skipped if CUDA 13.0 build fails)"
+echo "==> Step 5: xformers (binary-only — skipped on CUDA 13.0, no wheel available)"
 # xformers uses removed CUDA 13.0 driver API symbols (PFN_cuGetErrorName etc.)
-# and cannot be built from source. axolotl's flash_attention: true config
-# uses flash-attn instead, which is fully functional.
+# and cannot be built from source. --only-binary prevents pip from ever
+# attempting a source compile (which spawns many parallel cicc/nvcc processes
+# and exhausts all RAM+swap, freezing the system). If no pre-built wheel
+# matches the current platform, pip fails immediately and we skip gracefully.
+# axolotl's flash_attention: true config uses flash-attn instead.
 pip install "xformers==0.0.28.post2" \
+    --only-binary xformers \
     --extra-index-url "${TORCH_INDEX}" \
-    --no-build-isolation \
     --quiet \
     || echo "    xformers skipped — flash-attn will be used instead (see configs)"
 
@@ -111,6 +114,9 @@ else
     echo "    starting build (output visible so terminal stays 'alive')..."
     ( while true; do sleep 60; echo "    [flash-attn still building...]"; done ) &
     _HEARTBEAT=$!
+    # Mark this shell as high-priority for OOM kill: if RAM fills up, the kernel
+    # kills this build process first (graceful failure) instead of freezing the system.
+    echo 500 > /proc/self/oom_score_adj 2>/dev/null || true
     MAX_JOBS=1 nice -n 10 pip install flash-attn \
         --no-build-isolation \
         --no-binary flash-attn \
