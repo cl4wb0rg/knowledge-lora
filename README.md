@@ -5,6 +5,21 @@ Continued Pretraining (CPT) + Supervised Fine-Tuning (SFT) LoRA adapter for
 trained on German Wikipedia and custom documents (PDFs, Markdown) to extend the
 model's knowledge cutoff.
 
+## Pipeline run status
+
+| Step | Status | Output | Notes |
+|------|--------|--------|-------|
+| 01 download | ✅ done | `data/raw/dewiki-latest-pages-articles.xml.bz2` (7.3 GB) | |
+| 02 extract | ✅ done | `data/processed/wikipedia_de.jsonl` (7.6 GB, 2,625,635 articles) | |
+| 03 PDF extract | — skipped | — | no PDF inputs |
+| 04 Markdown extract | — skipped | — | no MD inputs |
+| 05 dedup | ✅ done | `data/processed/corpus.jsonl` (7.6 GB, 2,614,035 articles) | 11,600 dupes removed |
+| 06 tokenize | 🔄 running | `data/tokenized/cpt_dataset/` | Ministral tokenizer, seq_len 8192 |
+| 07 SFT data | ✅ done | `data/processed/sft_data.jsonl` (2.2 GB, 1,543,744 examples) | template-based |
+| 08 QA generation | ⏳ pending | `data/processed/sft_qa_llm.jsonl` | runs after CPT merge |
+| CPT training | ⏳ pending | `output/cpt/` | axolotl, LoRA rank 128 |
+| SFT training | ⏳ pending | `output/sft/` | axolotl, LoRA rank 64 |
+
 ## Architecture overview
 
 ```
