@@ -57,6 +57,17 @@ pip install \
     sentencepiece protobuf tqdm \
     --quiet
 
+# wikiextractor is unmaintained and broken on Python 3.12: re.compile() now
+# rejects (?i) flags embedded mid-pattern (e.g. '\[(((?i)...'). Patch the two
+# affected lines in extract.py in-place by moving (?i) to the pattern start.
+_WE_EXTRACT=$(python -c \
+    "import os, wikiextractor; print(os.path.join(os.path.dirname(wikiextractor.__file__), 'extract.py'))")
+if [ -f "$_WE_EXTRACT" ]; then
+    python scripts/patch_wikiextractor.py "$_WE_EXTRACT" \
+        && echo "    [wikiextractor] Python 3.12 regex patch applied" \
+        || echo "    [wikiextractor] patch skipped (already applied or file changed)"
+fi
+
 echo "==> Step 4: bitsandbytes (optional, for 8-bit experiments)"
 pip install "bitsandbytes>=0.44.0" --quiet \
     || echo "    bitsandbytes skipped (non-critical)"

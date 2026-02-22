@@ -41,8 +41,6 @@ def extract_with_wikiextractor(dump_path: Path, tmp_dir: Path, lang: str) -> Pat
     n_workers = os.cpu_count() or 4
 
     cmd = [
-        sys.executable,
-        "-m",
         "wikiextractor",
         str(dump_path),
         "--output",
@@ -50,9 +48,6 @@ def extract_with_wikiextractor(dump_path: Path, tmp_dir: Path, lang: str) -> Pat
         "--json",
         "--quiet",
         "--no-templates",
-        "--filter_disambig_pages",
-        "--min_text_length",
-        "200",
         "--processes",
         str(n_workers),
     ]
