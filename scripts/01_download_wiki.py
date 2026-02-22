@@ -67,17 +67,6 @@ def _md5_file(path: Path) -> str:
     return h.hexdigest()
 
 
-def _reporthook(count: int, block_size: int, total_size: int) -> None:
-    downloaded = count * block_size
-    if total_size > 0:
-        pct = min(downloaded * 100 / total_size, 100)
-        mb_done = downloaded / 1_048_576
-        mb_total = total_size / 1_048_576
-        print(f"\r  {pct:5.1f}%  {mb_done:,.0f} / {mb_total:,.0f} MB", end="", flush=True)
-    else:
-        mb_done = downloaded / 1_048_576
-        print(f"\r  {mb_done:,.0f} MB downloaded", end="", flush=True)
-
 
 def download_dump(lang: str, out_dir: Path) -> None:
     """Download and verify the Wikipedia dump for *lang*."""
@@ -100,11 +89,38 @@ def download_dump(lang: str, out_dir: Path) -> None:
 
     log.info("Downloading %s", url)
     log.info("  → %s", dest)
+
+    # Resume partial download if .tmp already exists (e.g. after a stalled connection).
+    resume_from = tmp.stat().st_size if tmp.exists() else 0
+    if resume_from:
+        log.info("  Resuming from %d MB already downloaded", resume_from // 1_048_576)
+
     try:
-        urllib.request.urlretrieve(url, tmp, _reporthook)  # noqa: S310
+        req = urllib.request.Request(url)  # noqa: S310
+        if resume_from:
+            req.add_header("Range", f"bytes={resume_from}-")
+        with urllib.request.urlopen(req, timeout=60) as resp:  # noqa: S310
+            total_size = int(resp.headers.get("Content-Length", 0)) + resume_from
+            downloaded = resume_from
+            mode = "ab" if resume_from else "wb"
+            with tmp.open(mode) as f:
+                while True:
+                    chunk = resp.read(1 << 20)  # 1 MB chunks
+                    if not chunk:
+                        break
+                    f.write(chunk)
+                    downloaded += len(chunk)
+                    if total_size > 0:
+                        pct = min(downloaded * 100 / total_size, 100)
+                        print(
+                            f"\r  {pct:5.1f}%  {downloaded/1_048_576:,.0f}"
+                            f" / {total_size/1_048_576:,.0f} MB",
+                            end="",
+                            flush=True,
+                        )
         print()  # newline after progress bar
     except Exception:
-        tmp.unlink(missing_ok=True)
+        # Leave the .tmp file in place so a retry can resume
         raise
 
     # Verify checksum

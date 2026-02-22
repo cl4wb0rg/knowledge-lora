@@ -101,7 +101,8 @@ python scripts/01_download_wiki.py --lang de --lang en --lang fr
 ```
 
 Downloads `data/raw/dewiki-latest-pages-articles.xml.bz2` and verifies the MD5
-checksum against Wikimedia's published checksums.
+checksum against Wikimedia's published checksums. The download is **resumable**
+— if the connection drops, re-running the script continues from where it left off.
 
 ### Step 2 — Extract Wikipedia text
 
