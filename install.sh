@@ -5,9 +5,8 @@
 # Why not plain `pip install -r requirements.txt`?
 #   1. xformers requires torch at build-time — pip doesn't guarantee order.
 #   2. xformers has no pre-built cu130 wheel — we skip it; flash-attn covers it.
-#   3. Pre-pinning axolotl's transitive deps (transformers, peft, accelerate)
-#      before axolotl itself causes ResolutionImpossible conflicts. We let
-#      axolotl resolve its own dependency tree first, then add extras.
+#   3. axolotl GitHub HEAD pins exact versions (torch, transformers, hf-hub) —
+#      we install those exact versions after axolotl to avoid conflicts.
 #
 # Usage:
 #   bash install.sh
@@ -16,29 +15,36 @@ set -euo pipefail
 
 CUDA_TAG="cu130"
 TORCH_INDEX="https://download.pytorch.org/whl/${CUDA_TAG}"
+TORCH_NIGHTLY="https://download.pytorch.org/whl/nightly/${CUDA_TAG}"
 
 echo "==> Step 1: PyTorch (CUDA ${CUDA_TAG})"
-if pip install "torch>=2.3.0,<3.0" --index-url "${TORCH_INDEX}" --quiet; then
-    echo "    torch installed from ${TORCH_INDEX}"
+# axolotl HEAD currently requires torch==2.10.0+cu130; try that first,
+# then fall back to latest stable, then nightly.
+if pip install "torch==2.10.0+cu130" --index-url "${TORCH_INDEX}" --quiet 2>/dev/null; then
+    echo "    torch 2.10.0+cu130 installed"
+elif pip install "torch>=2.9.0,<3.0" --index-url "${TORCH_INDEX}" --quiet; then
+    echo "    torch $(python -c 'import torch; print(torch.__version__)') installed (latest stable)"
 else
-    echo "    cu130 wheels not found — falling back to PyTorch nightly"
-    pip install --pre "torch" \
-        --index-url "https://download.pytorch.org/whl/nightly/${CUDA_TAG}" \
-        --quiet
+    echo "    stable cu130 wheels not found — falling back to nightly"
+    pip install --pre "torch" --index-url "${TORCH_NIGHTLY}" --quiet
 fi
+python -c "import torch; print('    torch', torch.__version__)"
 
-echo "==> Step 2: Axolotl + DeepSpeed"
-# PyPI releases of axolotl lag behind torch nightlies — all versions fail with
-# ResolutionImpossible when torch >= 2.7 (nightly) is installed.
-# Installing from GitHub HEAD picks up the latest dependency bounds.
-TORCH_VER=$(python -c "import torch; print(torch.__version__)" 2>/dev/null || echo "unknown")
-echo "    detected torch ${TORCH_VER}"
+echo "==> Step 2: Axolotl (GitHub HEAD, no DeepSpeed)"
 # deepspeed-kernels has no Python 3.12 wheel — and single-GPU LoRA on 128 GB
 # doesn't need DeepSpeed/ZeRO anyway. Install core axolotl only.
 pip install \
     "axolotl @ git+https://github.com/axolotl-ai-cloud/axolotl.git" \
     --extra-index-url "${TORCH_INDEX}" \
     --no-build-isolation \
+    --quiet
+
+echo "==> Step 2b: Align packages with axolotl HEAD requirements"
+# axolotl 0.15.0.dev0 pins transformers and huggingface-hub to specific
+# versions. Upgrading here prevents runtime import errors.
+pip install \
+    "transformers==5.2.0" \
+    "huggingface-hub>=1.1.7" \
     --quiet
 
 echo "==> Step 3: Data pipeline"
@@ -53,8 +59,11 @@ echo "==> Step 4: bitsandbytes (optional, for 8-bit experiments)"
 pip install "bitsandbytes>=0.44.0" --quiet \
     || echo "    bitsandbytes skipped (non-critical)"
 
-echo "==> Step 5: xformers (best-effort — skipped if no cu130 wheel available)"
-pip install "xformers==0.0.29.post2" \
+echo "==> Step 5: xformers (best-effort — skipped if CUDA 13.0 build fails)"
+# xformers uses removed CUDA 13.0 driver API symbols (PFN_cuGetErrorName etc.)
+# and cannot be built from source. axolotl's flash_attention: true config
+# uses flash-attn instead, which is fully functional.
+pip install "xformers==0.0.28.post2" \
     --extra-index-url "${TORCH_INDEX}" \
     --no-build-isolation \
     --quiet \
@@ -72,5 +81,26 @@ pip install wheel --quiet  # flash-attn setup.py requires 'wheel' in the venv
 pip install flash-attn --no-build-isolation --quiet
 
 echo ""
-echo "Done. Verify with:"
+echo "==> Dependency check"
+python - <<'EOF'
+import importlib, sys
+ok = True
+for pkg, imp in [
+    ("torch", "torch"), ("transformers", "transformers"),
+    ("axolotl", "axolotl"), ("peft", "peft"),
+    ("accelerate", "accelerate"), ("flash_attn", "flash_attn"),
+    ("datasets", "datasets"),
+]:
+    try:
+        m = importlib.import_module(imp)
+        ver = getattr(m, "__version__", "?")
+        print(f"    OK  {pkg}=={ver}")
+    except ImportError:
+        print(f"    MISSING  {pkg}", file=sys.stderr)
+        ok = False
+sys.exit(0 if ok else 1)
+EOF
+
+echo ""
+echo "Done. Verify GPU access with:"
 echo "  python -c \"import torch; print(torch.__version__, torch.cuda.get_device_name(0))\""
