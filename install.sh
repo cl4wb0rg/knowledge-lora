@@ -69,16 +69,15 @@ pip install "xformers==0.0.28.post2" \
     --quiet \
     || echo "    xformers skipped — flash-attn will be used instead (see configs)"
 
-echo "==> Step 6: vLLM (for LLM-based Q&A generation — 08_generate_qa_llm.py)"
-pip install "vllm>=0.6.0,<1.0" \
-    --extra-index-url "${TORCH_INDEX}" \
-    --timeout 120 \
-    --quiet \
-    || echo "    vLLM skipped — run: pip install vllm --timeout 120"
+# NOTE: vLLM is NOT installed here.
+# vLLM 0.15.x requires torch==2.9.1 while axolotl HEAD requires torch==2.10.0.
+# Installing both in the same venv causes torch to be downgraded, which then
+# breaks flash-attn (compiled C extensions become ABI-incompatible).
+# Use a separate venv for vLLM inference — see install_vllm.sh.
 
-echo "==> Step 7: flash-attn (built from source — takes a few minutes)"
+echo "==> Step 6: flash-attn (built from source — takes a few minutes)"
 pip install wheel --quiet  # flash-attn setup.py requires 'wheel' in the venv
-pip install flash-attn --no-build-isolation --quiet
+pip install flash-attn --no-build-isolation
 
 echo ""
 echo "==> Dependency check"
