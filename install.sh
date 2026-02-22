@@ -63,10 +63,12 @@ pip install "xformers==0.0.29.post2" \
 echo "==> Step 6: vLLM (for LLM-based Q&A generation — 08_generate_qa_llm.py)"
 pip install "vllm>=0.6.0,<1.0" \
     --extra-index-url "${TORCH_INDEX}" \
+    --timeout 120 \
     --quiet \
-    || echo "    vLLM skipped — install manually after torch is confirmed working"
+    || echo "    vLLM skipped — run: pip install vllm --timeout 120"
 
 echo "==> Step 7: flash-attn (built from source — takes a few minutes)"
+pip install wheel --quiet  # flash-attn setup.py requires 'wheel' in the venv
 pip install flash-attn --no-build-isolation --quiet
 
 echo ""
