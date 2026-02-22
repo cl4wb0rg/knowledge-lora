@@ -90,6 +90,24 @@ else
     # nice -n 10 reduces build priority so the system stays responsive.
     # --extra-index-url: prevents pip from pulling CPU torch from plain PyPI
     #   when re-resolving flash-attn's deps.
+    # --- Pre-build safeguards (require sudo; silently skipped if unavailable) ---
+    if sudo -n true 2>/dev/null; then
+        echo "    [safeguard] clearing filesystem cache..."
+        sudo -n sh -c 'sync && echo 3 > /proc/sys/vm/drop_caches'
+        # Cap GPU power to 80% of max to prevent overcurrent spikes during nvcc compilation.
+        # Stores the original limit so it can be restored after the build.
+        _GPU_ORIG_W=$(nvidia-smi --query-gpu=power.limit \
+            --format=csv,noheader,nounits 2>/dev/null | awk '{printf "%d", $1}')
+        _GPU_CAP_W=$(nvidia-smi --query-gpu=power.max_limit \
+            --format=csv,noheader,nounits 2>/dev/null | awk '{printf "%d", $1 * 0.8}')
+        if [ -n "$_GPU_CAP_W" ] && [ "$_GPU_CAP_W" -gt 0 ]; then
+            sudo -n nvidia-smi -pl "$_GPU_CAP_W" \
+                && echo "    [safeguard] GPU power capped to ${_GPU_CAP_W}W (was ${_GPU_ORIG_W}W)"
+        fi
+    else
+        echo "    [safeguard] sudo unavailable — cache clear and GPU power cap skipped"
+    fi
+
     echo "    starting build (output visible so terminal stays 'alive')..."
     ( while true; do sleep 60; echo "    [flash-attn still building...]"; done ) &
     _HEARTBEAT=$!
@@ -100,6 +118,12 @@ else
         --no-cache-dir \
         --extra-index-url "${TORCH_INDEX}"
     kill "$_HEARTBEAT" 2>/dev/null; wait "$_HEARTBEAT" 2>/dev/null || true
+
+    # Restore GPU power limit after build
+    if [ -n "${_GPU_ORIG_W:-}" ] && [ "${_GPU_ORIG_W:-0}" -gt 0 ] && sudo -n true 2>/dev/null; then
+        sudo -n nvidia-smi -pl "$_GPU_ORIG_W" 2>/dev/null \
+            && echo "    [safeguard] GPU power limit restored to ${_GPU_ORIG_W}W"
+    fi
 fi
 
 echo "==> Step 6b: re-pin torch+cu130 and fsspec (flash-attn dep resolver may replace them)"
