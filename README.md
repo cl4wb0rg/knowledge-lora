@@ -39,18 +39,30 @@ cd knowledge-lora
 
 # 2. Create virtual environment
 python -m venv .venv
-source .venv/bin/activate   # Windows: .venv\Scripts\activate
+source .venv/bin/activate
 
-# 3. Install dependencies
-pip install -r requirements.txt
+# 3. Install all training dependencies (handles CUDA 13.0 / GB10 quirks)
+bash install.sh
 
-# 4. Install Flash Attention (requires matching CUDA toolkit)
-pip install flash-attn --no-build-isolation
-
-# 5. Configure credentials
+# 4. Configure credentials
 cp .env.example .env
 # Edit .env and add your HuggingFace token
 ```
+
+> **DGX Spark / CUDA 13.0:** `install.sh` handles the correct installation order
+> for torch, axolotl (GitHub HEAD), flash-attn, and xformers (skipped — CUDA 13.0
+> incompatible; flash-attn is used instead). See the script for details.
+
+### vLLM inference environment (optional)
+
+vLLM requires a different torch version than axolotl and must live in its own venv:
+
+```bash
+bash install_vllm.sh        # creates .venv-vllm/
+source .venv-vllm/bin/activate
+```
+
+Use this environment only for running `scripts/08_generate_qa_llm.py` after CPT.
 
 ## Data pipeline
 
@@ -121,7 +133,7 @@ HF_TOKEN=hf_... python scripts/06_tokenize.py \
 Produces a packed Arrow dataset at `data/tokenized/cpt_dataset/`.
 Memory usage is bounded by `--batch-size` regardless of corpus size.
 
-### Step 7 — Generate SFT data
+### Step 7 — Generate SFT data (template-based)
 
 ```bash
 python scripts/07_create_sft_data.py \
@@ -131,6 +143,28 @@ python scripts/07_create_sft_data.py \
 ```
 
 Creates template-based summarisation, Q&A, and text-continuation examples.
+No model calls required — fast and deterministic.
+
+### Step 8 — Generate SFT data (LLM-based, optional)
+
+Generates higher-quality Q&A pairs using the CPT-merged model via vLLM.
+Run this **after** CPT is complete and the adapter has been merged.
+
+```bash
+# Activate the vLLM venv (separate from training venv — see Installation)
+source .venv-vllm/bin/activate
+
+python scripts/08_generate_qa_llm.py \
+    --model output/cpt/merged \
+    --input data/processed/corpus.jsonl \
+    --output data/processed/sft_qa_llm.jsonl \
+    --qa-per-doc 3 \
+    --batch-size 64
+```
+
+The CPT model is used (not the base model) so that generated questions reflect
+the newly learned knowledge. Output is in the same Alpaca format as step 7 and
+can be combined with or used instead of the template-based data for SFT.
 
 ## Training
 
@@ -191,7 +225,8 @@ knowledge-lora/
 │   ├── 04_extract_markdown.py    # MD/RST/TXT → JSONL
 │   ├── 05_clean_deduplicate.py   # SHA-256 + MinHash LSH dedup
 │   ├── 06_tokenize.py            # Tokenise + pack → Arrow dataset
-│   └── 07_create_sft_data.py     # Template-based SFT data
+│   ├── 07_create_sft_data.py     # Template-based SFT data (no model needed)
+│   └── 08_generate_qa_llm.py     # LLM-based Q&A via vLLM (run after CPT)
 ├── configs/
 │   ├── cpt_config.yaml           # Axolotl CPT config
 │   └── sft_config.yaml           # Axolotl SFT config
@@ -204,6 +239,8 @@ knowledge-lora/
 ├── .env.example                  # Credential template
 ├── pyproject.toml                # ruff + mypy config
 ├── requirements.txt
+├── install.sh                    # Staged installer for CUDA 13.0 / GB10
+├── install_vllm.sh               # Separate venv installer for vLLM inference
 ├── train_cpt.sh
 ├── train_sft.sh
 └── LICENSE                       # Apache 2.0
