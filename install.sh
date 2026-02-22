@@ -33,8 +33,10 @@ echo "==> Step 2: Axolotl + DeepSpeed"
 # Installing from GitHub HEAD picks up the latest dependency bounds.
 TORCH_VER=$(python -c "import torch; print(torch.__version__)" 2>/dev/null || echo "unknown")
 echo "    detected torch ${TORCH_VER}"
+# deepspeed-kernels has no Python 3.12 wheel — and single-GPU LoRA on 128 GB
+# doesn't need DeepSpeed/ZeRO anyway. Install core axolotl only.
 pip install \
-    "axolotl[deepspeed] @ git+https://github.com/axolotl-ai-cloud/axolotl.git" \
+    "axolotl @ git+https://github.com/axolotl-ai-cloud/axolotl.git" \
     --extra-index-url "${TORCH_INDEX}" \
     --no-build-isolation \
     --quiet
