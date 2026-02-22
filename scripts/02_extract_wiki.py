@@ -52,7 +52,7 @@ def extract_with_wikiextractor(dump_path: Path, tmp_dir: Path, lang: str) -> Pat
         str(n_workers),
     ]
     log.info("Running wikiextractor with %d workers: %s", n_workers, " ".join(cmd))
-    subprocess.run(cmd, check=True)  # noqa: S603
+    subprocess.run(cmd, check=True)
     return out_dir
 
 
@@ -99,7 +99,7 @@ def merge_shards(wikiextractor_out: Path, dest_file: Path, lang: str) -> int:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Extract Wikipedia XML dump to JSONL")
     parser.add_argument("--dump", required=True, help="Path to .xml.bz2 dump file")
-    parser.add_argument("--lang", default="de", help="Language code (2–5 lowercase letters)")
+    parser.add_argument("--lang", default="de", help="Language code (2-5 lowercase letters)")
     parser.add_argument("--output-dir", default="data/processed")
     parser.add_argument(
         "--tmp-dir",

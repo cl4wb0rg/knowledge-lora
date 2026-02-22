@@ -44,7 +44,7 @@ def clean_pdf_text(text: str) -> str:
     # Collapse multiple spaces (but not newlines)
     text = re.sub(r"[^\S\n]{2,}", " ", text)
     # Remove isolated page-number lines (digits / roman numerals only)
-    lines = [l for l in text.splitlines() if not re.fullmatch(r"\s*[\divxlcIVXLC]+\s*", l)]
+    lines = [ln for ln in text.splitlines() if not re.fullmatch(r"\s*[\divxlcIVXLC]+\s*", ln)]
     return "\n".join(lines).strip()
 
 

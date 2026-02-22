@@ -150,7 +150,7 @@ def main() -> None:
         action="append",
         default=[],
         metavar="LANG",
-        help="Language code (2–5 lowercase letters). Repeatable.",
+        help="Language code (2-5 lowercase letters). Repeatable.",
     )
     parser.add_argument("--output-dir", default="data/raw")
     args = parser.parse_args()

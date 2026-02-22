@@ -58,7 +58,7 @@ def chunk_generator(
     """
     Stream-tokenize the corpus and yield packed, fixed-length sequences.
 
-    Memory usage at any point is bounded by batch_size × avg_tokens_per_doc + seq_len,
+    Memory usage at any point is bounded by batch_size x avg_tokens_per_doc + seq_len,
     regardless of total corpus size.
     """
     eos_id: int | None = tokenizer.eos_token_id
@@ -110,7 +110,10 @@ def chunk_generator(
             "attention_mask": [1] * actual_len + [0] * (seq_len - actual_len),
         }
 
-    log.info("Tokenization complete: %d docs → %d chunks (seq_len=%d)", doc_count, chunk_count, seq_len)
+    log.info(
+        "Tokenization complete: %d docs -> %d chunks (seq_len=%d)",
+        doc_count, chunk_count, seq_len,
+    )
 
 
 def main() -> None:
@@ -153,7 +156,10 @@ def main() -> None:
         log.error("Input file not found: %s", jsonl_path)
         sys.exit(1)
 
-    log.info("Tokenizing: %s (seq_len=%d, batch_size=%d)", jsonl_path, args.seq_len, args.batch_size)
+    log.info(
+        "Tokenizing: %s (seq_len=%d, batch_size=%d)",
+        jsonl_path, args.seq_len, args.batch_size,
+    )
 
     def _gen() -> Generator[dict[str, list[int]], None, None]:
         yield from chunk_generator(jsonl_path, tokenizer, args.seq_len, args.batch_size)

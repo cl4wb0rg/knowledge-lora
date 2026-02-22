@@ -124,7 +124,7 @@ def make_title_qa_example(doc: dict[str, object], rng: random.Random) -> dict[st
 
 def make_continue_example(doc: dict[str, object], rng: random.Random) -> dict[str, str] | None:
     """
-    INPUT  = first ~25–40% of the article (prompt)
+    INPUT  = first ~25-40% of the article (prompt)
     OUTPUT = the following 150 words (natural continuation, non-overlapping)
     """
     text = str(doc.get("text", ""))
@@ -168,7 +168,7 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()
 
-    rng = random.Random(args.seed)
+    rng = random.Random(args.seed)  # noqa: S311
     output_file = Path(args.output)
     output_file.parent.mkdir(parents=True, exist_ok=True)
     tmp = output_file.with_suffix(".jsonl.tmp")

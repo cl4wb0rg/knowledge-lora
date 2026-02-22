@@ -206,7 +206,7 @@ def main() -> None:
 
     try:
         with (
-            open(args.input, encoding="utf-8") as inp,
+            Path(args.input).open(encoding="utf-8") as inp,
             tmp_path.open("w", encoding="utf-8") as out_f,
         ):
             batch_docs: list[dict] = []
@@ -217,7 +217,7 @@ def main() -> None:
                 if not batch_prompts:
                     return
                 outputs = llm.generate(batch_prompts, sampling_params)
-                for doc, result in zip(batch_docs, outputs):
+                for doc, result in zip(batch_docs, outputs, strict=True):
                     raw = result.outputs[0].text
                     pairs = _parse_qa(
                         raw,

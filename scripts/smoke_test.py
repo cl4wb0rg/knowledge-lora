@@ -14,9 +14,10 @@ pipeline, no large model download required.
 """
 
 import sys
+
 import torch
+from peft import LoraConfig, TaskType, get_peft_model
 from transformers import AutoModelForCausalLM, AutoTokenizer
-from peft import LoraConfig, get_peft_model, TaskType
 
 DEVICE = "cuda"
 MODEL  = "gpt2"
@@ -101,7 +102,7 @@ except Exception as e:
 
 # ── 6. Sanity: loss must be finite and must move ──────────────────────────────
 try:
-    assert all(torch.isfinite(torch.tensor(l)) for l in losses), "non-finite loss"
+    assert all(torch.isfinite(torch.tensor(loss)) for loss in losses), "non-finite loss"
     check(f"all losses finite  |  first={losses[0]:.4f}  last={losses[-1]:.4f}")
 except Exception as e:
     fail("loss sanity", e)
