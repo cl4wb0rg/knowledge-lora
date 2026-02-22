@@ -9,7 +9,7 @@ git clone https://github.com/cl4wb0rg/knowledge-lora.git
 cd knowledge-lora
 python -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
+bash install.sh          # handles CUDA 13.0 install order and flash-attn build
 pip install ruff mypy
 ```
 

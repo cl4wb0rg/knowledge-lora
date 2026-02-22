@@ -21,9 +21,10 @@ protobuf
 tqdm
 huggingface_hub>=0.26.0,<2.0
 
-# ── LLM inference (for 08_generate_qa_llm.py — install after torch) ──────────
-# pip install vllm
-vllm>=0.6.0,<1.0
+# ── LLM inference (for 08_generate_qa_llm.py) ────────────────────────────────
+# vLLM requires a different torch version than axolotl and MUST be installed
+# in a separate venv. Run install_vllm.sh — do NOT add vllm here.
+# vllm>=0.15.0,<1.0
 
 # ── Flash Attention (install separately — requires matching CUDA toolkit) ─────
 # pip install flash-attn --no-build-isolation

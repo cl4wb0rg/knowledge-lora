@@ -83,11 +83,20 @@ pip install wheel --quiet  # flash-attn setup.py requires 'wheel' in the venv
 # (CUDA 12) which is absent on this system (CUDA 13.0).
 # MAX_JOBS=2 prevents OOM: default -j10 spawns 10 parallel nvcc processes,
 # each compiling for 4 GPU architectures — enough to exhaust unified memory.
+# --extra-index-url: flash-attn's --force-reinstall re-resolves torch; pointing
+# at the CUDA index prevents pip from pulling the CPU build from plain PyPI.
 MAX_JOBS=2 pip install flash-attn \
     --no-build-isolation \
     --no-binary flash-attn \
     --force-reinstall \
-    --no-cache-dir
+    --no-cache-dir \
+    --extra-index-url "${TORCH_INDEX}"
+
+echo "==> Step 6b: re-pin torch+cu130 and fsspec (flash-attn dep resolver may replace them)"
+# --force-reinstall above can still pull CPU torch or a newer fsspec from PyPI.
+# Re-installing here guarantees the CUDA build and a datasets-compatible fsspec.
+pip install "torch==2.10.0+cu130" --index-url "${TORCH_INDEX}" --quiet
+pip install "fsspec>=2023.1.0,<=2025.10.0" --quiet
 
 echo ""
 echo "==> Dependency check"
