@@ -49,6 +49,51 @@ pip install \
     numpy \
     --quiet
 
+echo "==> Step 2c: Patch axolotl multimodal imports (SmolVLM / Voxtral not in transformers 5.2)"
+# axolotl HEAD imports SmolVLMProcessor and VoxtralProcessor at module level.
+# transformers 5.2.0 ships these symbols but they require optional VLM packages
+# (e.g. smolvlm tokenizer) that we don't install. The import fails for all users
+# who don't have those packages, aborting training even for text-only runs.
+# Wrapping in try/except makes the import conditional — if None, VLM strategies
+# are unavailable but everything else works.
+_PS=$(python -c \
+    "import os, axolotl; print(os.path.join(os.path.dirname(axolotl.__file__), 'processing_strategies.py'))" \
+    2>/dev/null || true)
+if [ -f "$_PS" ]; then
+    python - "$_PS" <<'PYEOF'
+import sys, re
+
+path = sys.argv[1]
+src = open(path).read()
+
+# Idempotent: skip if already patched
+if "except (ImportError, ModuleNotFoundError):" in src:
+    print("    [axolotl patch] processing_strategies.py already patched — skipping")
+    sys.exit(0)
+
+for sym in ("InternVLProcessor", "SmolVLMProcessor", "VoxtralProcessor"):
+    module_map = {
+        "InternVLProcessor": "transformers.models.internvl",
+        "SmolVLMProcessor":  "transformers.models.smolvlm",
+        "VoxtralProcessor":  "transformers.models.voxtral",
+    }
+    mod = module_map[sym]
+    old = f"from {mod} import {sym}"
+    new = (
+        f"try:\n"
+        f"    from {mod} import {sym}\n"
+        f"except (ImportError, ModuleNotFoundError):\n"
+        f"    {sym} = None  # type: ignore[assignment,misc]"
+    )
+    src = src.replace(old, new)
+
+open(path, "w").write(src)
+print(f"    [axolotl patch] processing_strategies.py patched (try-except for VLM imports)")
+PYEOF
+else
+    echo "    [axolotl patch] processing_strategies.py not found — skipping"
+fi
+
 echo "==> Step 3: Data pipeline"
 pip install \
     wikiextractor \
