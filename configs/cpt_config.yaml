@@ -44,6 +44,7 @@ lora_modules_to_save: []     # nothing needs to be saved fully (no new tokens)
 
 # ── training hyperparameters ─────────────────────────────────────────────────
 num_epochs: 1                # one pass over the corpus is usually enough for CPT
+max_steps: 1250              # 20 000 sequences / 16 per step = 1250 steps (~4-5 days)
 micro_batch_size: 2
 gradient_accumulation_steps: 8   # effective batch = 2 × 8 = 16
 optimizer: adamw_torch_fused
