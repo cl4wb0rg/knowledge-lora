@@ -19,6 +19,9 @@ source .venv/bin/activate
 # Load .env (HF_TOKEN, optional WANDB_*)
 set -a; source .env; set +a
 
+# Disable axolotl telemetry (whitelist.yaml missing in GitHub HEAD installs)
+export AXOLOTL_DO_NOT_TRACK=1
+
 LOG="$REPO/logs/pipeline_orchestration.log"
 mkdir -p logs
 
