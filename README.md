@@ -17,7 +17,7 @@ model's knowledge cutoff.
 | 06 tokenize | ✅ done | `data/tokenized/cpt_dataset/` (236963 sequences) | Ministral tokenizer, seq_len 8192 |
 | 07 SFT data | ✅ done | `data/processed/sft_data.jsonl` (2.2 GB, 1,543,744 examples) | template-based |
 | 08 QA generation | ⏳ pending | `data/processed/sft_qa_llm.jsonl` | runs after CPT merge |
-| CPT training | ⏳ pending | `output/cpt/` | axolotl, LoRA rank 128 |
+| CPT training | 🔄 running | `output/cpt/` | axolotl, LoRA rank 128 |
 | SFT training | ⏳ pending | `output/sft/` | axolotl, LoRA rank 64 |
 
 ## Architecture overview
