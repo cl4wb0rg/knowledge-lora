@@ -46,7 +46,7 @@ lora_modules_to_save: []     # nothing needs to be saved fully (no new tokens)
 num_epochs: 1                # one pass over the corpus is usually enough for CPT
 max_steps: 2400              # ~7 days at optimized speed (32 seqs/step, ~250s/step)
                              # = ~76 800 seqs (32 % of full corpus)
-micro_batch_size: 4          # was 2; doubled to 4 → effective batch = 4 × 8 = 32
+micro_batch_size: 2          # 2 → effective batch = 2 × 8 = 16; safer on unified memory
 gradient_accumulation_steps: 8
 optimizer: adamw_torch_fused
 lr_scheduler: cosine
@@ -58,6 +58,14 @@ max_grad_norm: 1.0
 # ── memory efficiency ─────────────────────────────────────────────────────────
 gradient_checkpointing: false  # disabled: 128 GB → no VRAM pressure; saves ~30-40% compute
 flash_attention: true          # requires flash-attn package; install separately
+
+# ── dataloader ────────────────────────────────────────────────────────────────
+# CRITICAL: num_workers=0 prevents forking. On this machine (unified memory,
+# 62 GB Arrow dataset), each forked pt_data_worker inherits all mmap'd shards
+# (~140 GB virtual per worker), exhausting RAM and triggering OOM → system freeze.
+# With num_workers=0 data loading is synchronous in the main process — no forks.
+dataloader_num_workers: 0
+dataloader_pin_memory: false   # no benefit with unified memory; avoids extra RAM
 
 # ── checkpointing & logging ───────────────────────────────────────────────────
 output_dir: ./output/cpt
