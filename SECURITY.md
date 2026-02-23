@@ -35,7 +35,7 @@ Rules for auto-commit content:
 - **No hostnames, IP addresses, or hardware identifiers** in committed files
   or commit messages.
 - **No absolute local paths** — use relative paths in all configs and commit
-  messages (e.g. `output/cpt/checkpoint-500`, not `/home/mvdb/...`).
+  messages (e.g. `output/cpt/checkpoint-500`, not `/home/USER/...`).
 - **No personal data** — training data sources must be public datasets only.
 - **No tokens or API keys** — always load from `.env`, never hardcode.
 - README status updates (step progress, loss values) are acceptable public
