@@ -17,7 +17,7 @@ model's knowledge cutoff.
 | 06 tokenize | ✅ done | `data/tokenized/cpt_dataset/` (236963 sequences) | Ministral tokenizer, seq_len 8192 |
 | 07 SFT data | ✅ done | `data/processed/sft_data.jsonl` (2.2 GB, 1,543,744 examples) | template-based |
 | 08 QA generation | ⏳ pending | `data/processed/sft_qa_llm.jsonl` | runs after CPT merge |
-| CPT training | 🔄 running | `output/cpt/` | axolotl, LoRA rank 128, 1250 steps (20k seqs) |
+| CPT training | 🔄 running | `output/cpt/` | axolotl, LoRA rank 128, 2400 steps (~77k seqs, ~7 days); micro_batch=4, grad_ckpt=off |
 | SFT training | ⏳ pending | `output/sft/` | axolotl, LoRA rank 64 |
 
 ## Architecture overview
@@ -223,6 +223,8 @@ Key settings (DGX Spark / 128 GB):
 |---|---|---|
 | LoRA rank | 128 | Higher rank → more capacity for new knowledge |
 | Sequence length | 8192 | Increase to 16384 if needed |
+| Micro batch size | 4 | Effective batch = 32 seqs/step (128 GB headroom allows doubling) |
+| Gradient checkpointing | off | Disabled: 30–40 % compute saved; VRAM budget allows it |
 | Learning rate | 1e-4 | Standard for CPT |
 | Precision | BF16 | No quantisation on 128 GB |
 | Epochs | 1 | One pass is typically sufficient |
