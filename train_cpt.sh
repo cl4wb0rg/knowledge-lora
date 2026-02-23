@@ -17,7 +17,17 @@ echo "Config : configs/cpt_config.yaml"
 echo "Output : output/cpt"
 echo ""
 
-accelerate launch -m axolotl.cli.train configs/cpt_config.yaml
+# Auto-resume: find latest checkpoint and pass it as a path string.
+# axolotl's pydantic schema requires a string path, not a boolean.
+LATEST_CKPT=$(ls -d output/cpt/checkpoint-* 2>/dev/null | sort -V | tail -1 || true)
+if [ -n "$LATEST_CKPT" ]; then
+    echo "Resuming from checkpoint: $LATEST_CKPT"
+    accelerate launch -m axolotl.cli.train configs/cpt_config.yaml \
+        --resume_from_checkpoint "$LATEST_CKPT"
+else
+    echo "No checkpoint found — starting from scratch"
+    accelerate launch -m axolotl.cli.train configs/cpt_config.yaml
+fi
 
 echo ""
 echo "=== CPT training complete ==="

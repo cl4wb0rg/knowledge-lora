@@ -94,6 +94,34 @@ else
     echo "    [axolotl patch] processing_strategies.py not found — skipping"
 fi
 
+echo "==> Step 2d: Patch axolotl eval_on_start (hardcoded True → False)"
+# axolotl unconditionally sets eval_on_start=True whenever eval_steps is configured,
+# causing a full evaluation pass (~44 min) before every training run — even on restart.
+# We patch it to False so periodic evals (every eval_steps) still run, but the
+# wasteful pre-training eval is skipped.
+_BASE=$(python -c \
+    "import os, axolotl; print(os.path.join(os.path.dirname(axolotl.__file__), 'core/builders/base.py'))" \
+    2>/dev/null || true)
+if [ -f "$_BASE" ]; then
+    python - "$_BASE" <<'PYEOF'
+import sys
+path = sys.argv[1]
+src = open(path).read()
+if 'patched: skip wasteful initial eval' in src:
+    print("    [axolotl patch] base.py eval_on_start already patched — skipping")
+    sys.exit(0)
+count = src.count('training_args_kwargs["eval_on_start"] = True')
+src = src.replace(
+    'training_args_kwargs["eval_on_start"] = True',
+    'training_args_kwargs["eval_on_start"] = False  # patched: skip wasteful initial eval'
+)
+open(path, "w").write(src)
+print(f"    [axolotl patch] base.py patched: {count} occurrence(s) of eval_on_start True → False")
+PYEOF
+else
+    echo "    [axolotl patch] base.py not found — skipping"
+fi
+
 echo "==> Step 3: Data pipeline"
 pip install \
     wikiextractor \
