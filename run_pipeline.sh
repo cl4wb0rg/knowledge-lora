@@ -10,7 +10,7 @@
 # ═══════════════════════════════════════════════════════════════════════════════
 set -euo pipefail
 
-REPO="/home/mvdb/knowledge-lora"
+REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$REPO"
 
 # Activate training venv (nohup starts with a bare env)
@@ -92,25 +92,37 @@ readme_update \
 git_commit_push "data: complete step 06 tokenize ($CHUNK_COUNT packed sequences)"
 
 # ─────────────────────────────────────────────────────────────────────────────
-# CPT TRAINING
+# CPT TRAINING  (skipped automatically if already complete)
 # ─────────────────────────────────────────────────────────────────────────────
-log "=== Starting CPT training ==="
+CPT_DONE_MARKER="output/cpt/.training_complete"
 
-readme_update \
-    $'\\| CPT training \\| ⏳ pending \\|[^|]*\\|[^|]*\\|' \
-    "| CPT training | 🔄 running | \`output/cpt/\` | axolotl, LoRA rank 128 |"
-git_commit_push "training: start CPT training (axolotl + LoRA rank 128)"
+if [ -f "$CPT_DONE_MARKER" ]; then
+    # Find last checkpoint (axolotl saves checkpoint-NNNN and optionally checkpoint-final)
+    CPT_CHECKPOINT=$(ls -d output/cpt/checkpoint-* 2>/dev/null | sort -V | tail -1 || echo "output/cpt")
+    log "=== CPT training already complete (found $CPT_DONE_MARKER) — skipping. Using: $CPT_CHECKPOINT ==="
+else
+    log "=== Starting CPT training ==="
 
-bash train_cpt.sh 2>&1 | tee logs/cpt_training.log
+    readme_update \
+        $'\\| CPT training \\| ⏳ pending \\|[^|]*\\|[^|]*\\|' \
+        "| CPT training | 🔄 running | \`output/cpt/\` | axolotl, LoRA rank 128 |"
+    git_commit_push "training: start CPT training (axolotl + LoRA rank 128)"
 
-# Find last checkpoint (axolotl saves checkpoint-NNNN and optionally checkpoint-final)
-CPT_CHECKPOINT=$(ls -d output/cpt/checkpoint-* 2>/dev/null | sort -V | tail -1 || echo "output/cpt")
-log "CPT training done. Using checkpoint: $CPT_CHECKPOINT"
+    # cpt_config.yaml has resume_from_checkpoint: true — axolotl will auto-resume
+    # from the latest checkpoint-NNNN in output/cpt/ if one exists (e.g. after a crash).
+    bash train_cpt.sh 2>&1 | tee logs/cpt_training.log
 
-readme_update \
-    $'\\| CPT training \\| 🔄 running \\|[^|]*\\|[^|]*\\|' \
-    "| CPT training | ✅ done | \`output/cpt/\` | LoRA rank 128; $(basename "$CPT_CHECKPOINT") |"
-git_commit_push "training: complete CPT training ($(basename "$CPT_CHECKPOINT"))"
+    # Find last checkpoint (axolotl saves checkpoint-NNNN and optionally checkpoint-final)
+    CPT_CHECKPOINT=$(ls -d output/cpt/checkpoint-* 2>/dev/null | sort -V | tail -1 || echo "output/cpt")
+    log "CPT training done. Using checkpoint: $CPT_CHECKPOINT"
+
+    touch "$CPT_DONE_MARKER"
+
+    readme_update \
+        $'\\| CPT training \\| 🔄 running \\|[^|]*\\|[^|]*\\|' \
+        "| CPT training | ✅ done | \`output/cpt/\` | LoRA rank 128; $(basename "$CPT_CHECKPOINT") |"
+    git_commit_push "training: complete CPT training ($(basename "$CPT_CHECKPOINT"))"
+fi
 
 # ─────────────────────────────────────────────────────────────────────────────
 # MERGE CPT LoRA
