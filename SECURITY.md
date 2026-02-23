@@ -1,5 +1,10 @@
 # SECURITY.md — knowledge-lora
 
+This project follows the same workspace-wide security baseline as other
+cl4wb0rg repositories.
+
+---
+
 ## Visibility
 
 This repository is **public**. Do not commit anything that reveals internal
@@ -58,9 +63,19 @@ Rules for auto-commit content:
 - Training data is sourced from public datasets (Wikipedia DE); no PII.
 - Model outputs (weights, checkpoints) remain local and are never pushed.
 
+**`install.sh`:** Downloads and compiles third-party Python packages (including
+`flash-attn` from source). Pin versions explicitly and review checksums when
+updating dependencies. Do not run `install.sh` from untrusted forks.
+
+**Dependencies:** Python packages managed via `pip` in `.venv` / `.venv-vllm`.
+Run `pip-audit` to check for known vulnerabilities:
+```bash
+source .venv/bin/activate && pip-audit
+```
+
 ---
 
 ## Vulnerability reporting
 
-Report security issues **privately** — do not open a public issue.
-Include a description, repro steps, and potential impact.
+Report security issues **privately** — do not open a public issue for vulnerabilities.
+Include repro steps, impact, and affected versions.
