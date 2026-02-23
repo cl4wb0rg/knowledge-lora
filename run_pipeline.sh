@@ -13,6 +13,9 @@ set -euo pipefail
 REPO="/home/mvdb/knowledge-lora"
 cd "$REPO"
 
+# Activate training venv (nohup starts with a bare env)
+source .venv/bin/activate
+
 # Load .env (HF_TOKEN, optional WANDB_*)
 set -a; source .env; set +a
 
@@ -95,7 +98,6 @@ readme_update \
     "| CPT training | 🔄 running | \`output/cpt/\` | axolotl, LoRA rank 128 |"
 git_commit_push "training: start CPT training (axolotl + LoRA rank 128)"
 
-source .venv/bin/activate
 bash train_cpt.sh 2>&1 | tee logs/cpt_training.log
 
 # Find last checkpoint (axolotl saves checkpoint-NNNN and optionally checkpoint-final)
