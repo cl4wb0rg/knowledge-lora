@@ -5,20 +5,20 @@ Continued Pretraining (CPT) + Supervised Fine-Tuning (SFT) LoRA adapter for
 trained on German Wikipedia and custom documents (PDFs, Markdown) to extend the
 model's knowledge cutoff.
 
-## Pipeline run status
+## Pipeline stages
 
-| Step | Status | Output | Notes |
-|------|--------|--------|-------|
-| 01 download | ✅ done | `data/raw/dewiki-latest-pages-articles.xml.bz2` (7.3 GB) | |
-| 02 extract | ✅ done | `data/processed/wikipedia_de.jsonl` (7.6 GB, 2,625,635 articles) | |
-| 03 PDF extract | — skipped | — | no PDF inputs |
-| 04 Markdown extract | — skipped | — | no MD inputs |
-| 05 dedup | ✅ done | `data/processed/corpus.jsonl` (7.6 GB, 2,614,035 articles) | 11,600 dupes removed |
-| 06 tokenize | ✅ done | `data/tokenized/cpt_dataset/` (236963 sequences) | Ministral tokenizer, seq_len 8192 |
-| 07 SFT data | ✅ done | `data/processed/sft_data.jsonl` (2.2 GB, 1,543,744 examples) | template-based |
-| 08 QA generation | ⏳ pending | `data/processed/sft_qa_llm.jsonl` | runs after CPT merge |
-| CPT training | 🔄 running | `output/cpt/` | axolotl, LoRA rank 128, 2400 steps (~77k seqs, ~7 days); micro_batch=4, grad_ckpt=off |
-| SFT training | ⏳ pending | `output/sft/` | axolotl, LoRA rank 64 |
+| Stage | Script | Output | Notes |
+|---|---|---|---|
+| 01 download | `scripts/01_download_wiki.py` | `data/raw/` | Resumable, MD5-verified |
+| 02 extract | `scripts/02_extract_wiki.py` | `data/processed/wikipedia_*.jsonl` | |
+| 03 PDF extract | `scripts/03_extract_pdfs.py` | `data/processed/pdfs.jsonl` | Optional |
+| 04 Markdown extract | `scripts/04_extract_markdown.py` | `data/processed/markdown.jsonl` | Optional |
+| 05 dedup | `scripts/05_clean_deduplicate.py` | `data/processed/corpus.jsonl` | SHA-256 + MinHash LSH |
+| 06 tokenize | `scripts/06_tokenize.py` | `data/tokenized/cpt_dataset/` | Packed Arrow, seq_len 8192 |
+| 07 SFT data | `scripts/07_create_sft_data.py` | `data/processed/sft_data.jsonl` | Template-based, no model needed |
+| 08 QA gen | `scripts/08_generate_qa_llm.py` | `data/processed/sft_qa_llm.jsonl` | LLM-based, runs after CPT merge |
+| CPT training | `train_cpt.sh` | `output/cpt/` | LoRA rank 128, BF16 |
+| SFT training | `train_sft.sh` | `output/sft/` | LoRA rank 64, from CPT checkpoint |
 
 ## Architecture overview
 
@@ -223,8 +223,8 @@ Key settings (DGX Spark / 128 GB):
 |---|---|---|
 | LoRA rank | 128 | Higher rank → more capacity for new knowledge |
 | Sequence length | 8192 | Increase to 16384 if needed |
-| Micro batch size | 4 | Effective batch = 32 seqs/step (128 GB headroom allows doubling) |
-| Gradient checkpointing | off | Disabled: 30–40 % compute saved; VRAM budget allows it |
+| Micro batch size | 2 | Effective batch = 16 seqs/step |
+| Gradient checkpointing | on | Required to fit training pass in unified memory |
 | Learning rate | 1e-4 | Standard for CPT |
 | Precision | BF16 | No quantisation on 128 GB |
 | Epochs | 1 | One pass is typically sufficient |
