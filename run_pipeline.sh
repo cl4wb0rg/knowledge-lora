@@ -144,10 +144,16 @@ python -m axolotl.cli.merge_lora configs/cpt_config.yaml \
             | head -1 | xargs dirname || echo "$CPT_CHECKPOINT")
     }
 
+# Axolotl may nest the merged model one level deeper (e.g. merged/merged/).
+# Find the directory that actually contains config.json.
+_ACTUAL=$(find "$MERGED_CPT" -name "config.json" -not -path "*/checkpoint-*/*" \
+    2>/dev/null | head -1 | xargs dirname 2>/dev/null || echo "")
+[ -n "$_ACTUAL" ] && MERGED_CPT="$_ACTUAL"
 log "CPT adapter merged → $MERGED_CPT"
 
 # ─────────────────────────────────────────────────────────────────────────────
-# STEP 08: LLM-based QA generation (uses .venv-vllm)
+# STEP 08: LLM-based QA generation (.venv-vllm with CUDA 13 binary patches)
+# vLLM 0.16.0 binaries patched for CUDA 13.0 (DT_NEEDED + vna_hash in .gnu.version_r).
 # ─────────────────────────────────────────────────────────────────────────────
 log "=== Starting step 08 (LLM QA generation, 20 000 docs) ==="
 
@@ -156,9 +162,7 @@ readme_update \
     "| 08 QA generation | 🔄 running | \`data/processed/sft_qa_llm.jsonl\` | 20K docs × 3 QA, vLLM |"
 git_commit_push "data: start step 08 LLM QA generation"
 
-# Switch to vLLM venv
-source .venv-vllm/bin/activate
-
+source "$REPO/.venv-vllm/bin/activate"
 python scripts/08_generate_qa_llm.py \
     --model "$MERGED_CPT" \
     --input  data/processed/corpus.jsonl \
@@ -167,9 +171,7 @@ python scripts/08_generate_qa_llm.py \
     --qa-per-doc 3 \
     --batch-size 32 \
     --max-new-tokens 512 2>&1 | tee logs/08_qa_gen.log
-
-# Switch back to training venv
-source .venv/bin/activate
+source "$REPO/.venv/bin/activate"
 
 QA_LINES=$(wc -l < data/processed/sft_qa_llm.jsonl 2>/dev/null || echo "0")
 log "Step 08 done: $QA_LINES QA pairs"

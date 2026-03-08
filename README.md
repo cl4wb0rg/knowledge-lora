@@ -102,6 +102,17 @@ source .venv-vllm/bin/activate
 
 Use this environment only for running `scripts/08_generate_qa_llm.py` after CPT.
 
+> **CUDA 13.0 vLLM binary patching:** vLLM 0.16.0 binaries reference `libcudart.so.12` but
+> CUDA 13.0 ships `libcudart.so.13`. Two binary patches are required after `install_vllm.sh`:
+> 1. Replace the `DT_NEEDED` string `libcudart.so.12` → `libcudart.so.13` in `.dynstr` (done by `install_vllm.sh`)
+> 2. Fix the ELF `vna_hash` in `.gnu.version_r` (glibc checks this hash for version matching):
+>    ```bash
+>    source .venv-vllm/bin/activate
+>    pip install pyelftools
+>    python scripts/patch_vllm_verneed_hash.py
+>    ```
+>    This patches all 6 vLLM `.so` files in-place. Safe to re-run (idempotent).
+
 ## Data pipeline
 
 Run the steps in order. All steps are idempotent — re-running skips already
@@ -268,7 +279,8 @@ knowledge-lora/
 │   ├── 05_clean_deduplicate.py   # SHA-256 + MinHash LSH dedup
 │   ├── 06_tokenize.py            # Tokenise + pack → Arrow dataset
 │   ├── 07_create_sft_data.py     # Template-based SFT data (no model needed)
-│   └── 08_generate_qa_llm.py     # LLM-based Q&A via vLLM (run after CPT)
+│   ├── 08_generate_qa_llm.py     # LLM-based Q&A via vLLM (run after CPT)
+│   └── patch_vllm_verneed_hash.py  # Fix vna_hash in vLLM .so files for CUDA 13
 ├── configs/
 │   ├── cpt_config.yaml           # Axolotl CPT config
 │   └── sft_config.yaml           # Axolotl SFT config

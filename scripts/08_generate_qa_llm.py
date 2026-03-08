@@ -47,37 +47,37 @@ log = logging.getLogger(__name__)
 
 # ── Prompt templates ──────────────────────────────────────────────────────────
 
-# The model is prompted to produce a numbered list of Q&A pairs.
-# Keeping the format simple makes parsing robust.
+# Few-shot prompts for base (CPT) model.
+# IMPORTANT: must end with "Q1:" — the base model follows the Q/A format when
+# primed by the Q1: prefix.  The raw output then starts with the Q1 question
+# text (without "Q1:" itself), so _parse_qa prepends "Q1:" before matching.
 PROMPT_DE = """\
-Lies den folgenden Text sorgfältig und erstelle daraus {n} Frage-Antwort-Paare auf Deutsch.
-Jedes Paar muss direkt aus dem Text beantwortbar sein.
+Text: Der Eiffelturm ist ein aus Eisen erbauter Gitterturm auf dem Champ de Mars in Paris. Er wurde zwischen 1887 und 1889 errichtet und ist 330 Meter hoch.
 
-Format (exakt einhalten):
-F1: <Frage>
-A1: <Antwort>
-F2: <Frage>
-A2: <Antwort>
+Q1: Wo steht der Eiffelturm?
+A1: Der Eiffelturm steht auf dem Champ de Mars in Paris.
+Q2: Wann wurde der Eiffelturm erbaut?
+A2: Der Eiffelturm wurde zwischen 1887 und 1889 errichtet.
+Q3: Wie hoch ist der Eiffelturm?
+A3: Der Eiffelturm ist 330 Meter hoch.
 
-Text:
-{text}
+Text: {text}
 
-Frage-Antwort-Paare:"""
+Q1:"""
 
 PROMPT_EN = """\
-Read the following text carefully and create {n} question-answer pairs in English.
-Each answer must be directly supported by the text.
+Text: The Eiffel Tower is a wrought-iron lattice tower on the Champ de Mars in Paris, France. It was built between 1887 and 1889 and stands 330 metres tall.
 
-Format (follow exactly):
-Q1: <question>
-A1: <answer>
-Q2: <question>
-A2: <answer>
+Q1: Where is the Eiffel Tower located?
+A1: The Eiffel Tower is located on the Champ de Mars in Paris, France.
+Q2: When was the Eiffel Tower built?
+A2: The Eiffel Tower was built between 1887 and 1889.
+Q3: How tall is the Eiffel Tower?
+A3: The Eiffel Tower stands 330 metres tall.
 
-Text:
-{text}
+Text: {text}
 
-Question-answer pairs:"""
+Q1:"""
 
 # Simple heuristic: use German prompt for 'de' docs, English for everything else
 def _pick_prompt(lang: str, text: str, n: int) -> str:
@@ -97,9 +97,14 @@ _QA_PATTERN = re.compile(
 
 
 def _parse_qa(raw: str, source: str, lang: str) -> list[dict[str, str]]:
-    """Extract (instruction=question, input='', output=answer) dicts from raw text."""
+    """Extract (instruction=question, input='', output=answer) dicts from raw text.
+
+    The prompt ends with 'Q1:' so the model output begins with the Q1 question
+    text (without the 'Q1:' prefix).  Prepend it back so the regex also
+    captures the first pair.
+    """
     results = []
-    for match in _QA_PATTERN.finditer(raw):
+    for match in _QA_PATTERN.finditer("Q1:" + raw):
         question = match.group(2).strip()
         answer = match.group(3).strip()
         if len(question) < 10 or len(answer) < 10:
