@@ -323,6 +323,37 @@ for step 5. Earlier files in the list take priority during deduplication.
 - **Partial downloads** are written to a `.tmp` file and renamed atomically only
   on success. A crashed download will not leave a corrupt file at the canonical path.
 
+## Uploading to HuggingFace Hub
+
+After training, push adapters and datasets with:
+
+```bash
+# Push everything (private by default)
+bash push_to_hub.sh
+
+# Individual components
+bash push_to_hub.sh --cpt          # CPT LoRA adapter only
+bash push_to_hub.sh --sft          # SFT LoRA adapter only
+bash push_to_hub.sh --data         # datasets only
+
+# Under an org instead of your personal namespace
+bash push_to_hub.sh --prefix my-org
+
+# Make repos public
+bash push_to_hub.sh --public
+```
+
+Requires `HF_TOKEN` in `.env` with **write** permission.
+Repos are **private by default** — pass `--public` to change.
+
+| Artifact | Hub repo | Notes |
+|---|---|---|
+| CPT LoRA adapter | `{user}/ministral-14b-de-cpt-lora` | `output/cpt/checkpoint-2400/`; 2.1 GB adapter weights |
+| SFT LoRA adapter | `{user}/ministral-14b-de-sft-lora` | `output/sft/`; best checkpoint by eval loss |
+| Datasets | `{user}/ministral-14b-de-dataset` | splits: `template` (step 07) + `llm_qa` (step 08) |
+
+Optimizer states (`optimizer.pt`, 3.7 GB) are excluded automatically — inference only.
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md).
