@@ -32,9 +32,10 @@ REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$REPO"
 
 # ── Load credentials ──────────────────────────────────────────────────────────
-# .env is gitignored; contains HF_TOKEN and optionally WANDB_* etc.
+# Uses .env2 (gitignored) which should hold a HF_TOKEN with WRITE access.
+# Kept separate from .env (training token, read-only) to limit token scope.
 # set -a exports all sourced variables to child processes (Python, huggingface-cli)
-set -a; source .env; set +a
+set -a; source .env2; set +a
 
 if [ -z "${HF_TOKEN:-}" ]; then
     echo "ERROR: HF_TOKEN is not set."
