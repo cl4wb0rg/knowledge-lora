@@ -60,6 +60,13 @@ gradient_checkpointing_kwargs:
   use_reentrant: false
 flash_attention: true
 
+# CRITICAL on DGX Spark / GB10: DataLoader workers fork and inherit all
+# memory-mapped Arrow shards. With num_workers>0 this causes an OOM cascade
+# that leads to a GPU semaphore deadlock and a full system freeze.
+# (Same fix as cpt_config.yaml — do not remove.)
+dataloader_num_workers: 0
+dataloader_pin_memory: false
+
 # ── chat template ─────────────────────────────────────────────────────────────
 # Use Mistral's default instruction format
 chat_template: mistral        # or "alpaca" if you prefer that prompt style
