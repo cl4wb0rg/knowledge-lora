@@ -45,7 +45,12 @@ lora_target_linear: true
 lora_fan_in_fan_out: false
 
 # ── training hyperparameters ─────────────────────────────────────────────────
+# num_epochs: 3 is overridden by max_steps below.
+# The template dataset (sft_data.jsonl) has 1.54M examples; 3 epochs = 294K
+# steps @ ~149s/step = ~510 days.  max_steps caps it at a sensible budget.
+# 3000 steps covers ~48K examples (≈ full QA dataset × 1) in ~5 days.
 num_epochs: 3
+max_steps: 3000
 micro_batch_size: 4
 gradient_accumulation_steps: 4    # effective batch = 4 × 4 = 16
 optimizer: adamw_torch_fused
