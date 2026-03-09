@@ -70,7 +70,7 @@ dataloader_pin_memory: false
 
 # ── chat template ─────────────────────────────────────────────────────────────
 # Use Mistral's default instruction format
-chat_template: mistral        # or "alpaca" if you prefer that prompt style
+chat_template: mistral_v3_tekken  # Ministral-3-14B uses the tekken tokenizer
 
 # ── checkpointing & logging ───────────────────────────────────────────────────
 output_dir: ./output/sft
