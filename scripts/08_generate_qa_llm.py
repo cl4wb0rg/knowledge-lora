@@ -52,7 +52,8 @@ log = logging.getLogger(__name__)
 # primed by the Q1: prefix.  The raw output then starts with the Q1 question
 # text (without "Q1:" itself), so _parse_qa prepends "Q1:" before matching.
 PROMPT_DE = """\
-Text: Der Eiffelturm ist ein aus Eisen erbauter Gitterturm auf dem Champ de Mars in Paris. Er wurde zwischen 1887 und 1889 errichtet und ist 330 Meter hoch.
+Text: Der Eiffelturm ist ein aus Eisen erbauter Gitterturm auf dem Champ de Mars in Paris.
+Er wurde zwischen 1887 und 1889 errichtet und ist 330 Meter hoch.
 
 Q1: Wo steht der Eiffelturm?
 A1: Der Eiffelturm steht auf dem Champ de Mars in Paris.
@@ -66,7 +67,8 @@ Text: {text}
 Q1:"""
 
 PROMPT_EN = """\
-Text: The Eiffel Tower is a wrought-iron lattice tower on the Champ de Mars in Paris, France. It was built between 1887 and 1889 and stands 330 metres tall.
+Text: The Eiffel Tower is a wrought-iron lattice tower on the Champ de Mars in Paris, France.
+It was built between 1887 and 1889 and stands 330 metres tall.
 
 Q1: Where is the Eiffel Tower located?
 A1: The Eiffel Tower is located on the Champ de Mars in Paris, France.
@@ -78,6 +80,7 @@ A3: The Eiffel Tower stands 330 metres tall.
 Text: {text}
 
 Q1:"""
+
 
 # Simple heuristic: use German prompt for 'de' docs, English for everything else
 def _pick_prompt(lang: str, text: str, n: int) -> str:
@@ -122,6 +125,7 @@ def _parse_qa(raw: str, source: str, lang: str) -> list[dict[str, str]]:
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(
