@@ -52,7 +52,7 @@ def _fetch_expected_md5(lang: str, filename: str) -> str | None:
             for line in resp.read().decode().splitlines():
                 parts = line.split()
                 if len(parts) == 2 and parts[1] == filename:
-                    return parts[0]
+                    return str(parts[0])
     except Exception as exc:
         log.warning("Could not fetch checksums from %s: %s", url, exc)
     return None

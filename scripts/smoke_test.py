@@ -14,6 +14,7 @@ pipeline, no large model download required.
 """
 
 import sys
+from typing import NoReturn
 
 import torch
 from peft import LoraConfig, TaskType, get_peft_model
@@ -25,11 +26,11 @@ SEQ_LEN = 128
 STEPS = 5
 
 
-def check(label):
+def check(label: str) -> None:
     print(f"  [OK]  {label}")
 
 
-def fail(label, exc):
+def fail(label: str, exc: Exception) -> NoReturn:
     print(f"  [FAIL] {label}: {exc}", file=sys.stderr)
     sys.exit(1)
 
