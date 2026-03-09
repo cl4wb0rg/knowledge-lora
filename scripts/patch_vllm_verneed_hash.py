@@ -12,8 +12,8 @@ vna_name string is 'libcudart.so.13'.
 """
 
 import struct
-import sys
 from pathlib import Path
+
 from elftools.elf.elffile import ELFFile
 
 TARGET_VERSION = b"libcudart.so.13\x00"
@@ -44,7 +44,7 @@ def patch_file(path: Path) -> int:
     """Return number of vna_hash fields patched."""
     data = bytearray(path.read_bytes())
 
-    with open(path, "rb") as f:
+    with path.open("rb") as f:
         elf = ELFFile(f)
         section = elf.get_section_by_name(".gnu.version_r")
         if section is None:
@@ -62,13 +62,13 @@ def patch_file(path: Path) -> int:
         patched = 0
         vn_off = 0
         while vn_off < sec_size:
-            vn_version, vn_cnt, vn_file, vn_aux, vn_next = struct.unpack_from(
+            _vn_version, vn_cnt, _vn_file, vn_aux, vn_next = struct.unpack_from(
                 "<HHIII", section.data(), vn_off
             )
             # Walk vernaux chain
             va_off = vn_off + vn_aux
             for _ in range(vn_cnt):
-                vna_hash, vna_flags, vna_other, vna_name, vna_next = struct.unpack_from(
+                _vna_hash, _vna_flags, _vna_other, vna_name, vna_next = struct.unpack_from(
                     "<IHHII", section.data(), va_off
                 )
                 # Check if this vernaux refers to 'libcudart.so.13'
@@ -85,7 +85,7 @@ def patch_file(path: Path) -> int:
                         patched += 1
                         print(f"    → patched to 0x{NEW_HASH:08x}")
                     elif current == NEW_HASH:
-                        print(f"    → already correct, skipping")
+                        print("    → already correct, skipping")
                     else:
                         print(f"    → unexpected hash 0x{current:08x}, skipping")
                 if vna_next == 0:
