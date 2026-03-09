@@ -10,6 +10,7 @@ Each line: {"id": ..., "title": ..., "text": ..., "source": "markdown"}
 Usage:
     python scripts/04_extract_markdown.py --input-dir /path/to/docs
 """
+
 import argparse
 import json
 import logging

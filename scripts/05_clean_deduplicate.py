@@ -15,6 +15,7 @@ Usage:
                       data/processed/markdown.jsonl \
         --output-file data/processed/corpus.jsonl
 """
+
 import argparse
 import hashlib
 import json
@@ -126,9 +127,7 @@ def main() -> None:
                         kept += 1
 
                         if total % 10_000 == 0:
-                            log.info(
-                                "%10d read | %10d kept | %8d dupes", total, kept, dupes
-                            )
+                            log.info("%10d read | %10d kept | %8d dupes", total, kept, dupes)
     except Exception:
         tmp.unlink(missing_ok=True)
         raise

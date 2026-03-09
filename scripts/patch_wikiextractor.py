@@ -6,6 +6,7 @@ Python 3.12 rejects (?i) flags embedded mid-pattern in re.compile().
 This script moves them to the front of the affected patterns.
 Idempotent: re-running after the patch is already applied is a no-op.
 """
+
 import sys
 from pathlib import Path
 

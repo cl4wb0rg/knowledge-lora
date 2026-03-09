@@ -20,16 +20,19 @@ from peft import LoraConfig, TaskType, get_peft_model
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 DEVICE = "cuda"
-MODEL  = "gpt2"
+MODEL = "gpt2"
 SEQ_LEN = 128
-STEPS   = 5
+STEPS = 5
+
 
 def check(label):
     print(f"  [OK]  {label}")
 
+
 def fail(label, exc):
     print(f"  [FAIL] {label}: {exc}", file=sys.stderr)
     sys.exit(1)
+
 
 print("=== knowledge-lora smoke test ===\n")
 
@@ -37,7 +40,7 @@ print("=== knowledge-lora smoke test ===\n")
 try:
     assert torch.cuda.is_available(), "CUDA not available"
     name = torch.cuda.get_device_name(0)
-    mem  = torch.cuda.get_device_properties(0).total_memory / 1024**3
+    mem = torch.cuda.get_device_properties(0).total_memory / 1024**3
     check(f"torch {torch.__version__}  |  {name}  |  {mem:.0f} GB")
 except Exception as e:
     fail("CUDA", e)
@@ -45,6 +48,7 @@ except Exception as e:
 # ── 2. flash-attn ─────────────────────────────────────────────────────────────
 try:
     import flash_attn
+
     check(f"flash-attn {flash_attn.__version__}")
 except Exception as e:
     fail("flash-attn import", e)
@@ -67,12 +71,12 @@ try:
         r=4,
         lora_alpha=8,
         lora_dropout=0.05,
-        target_modules=["c_attn"],   # GPT-2 attention projection
+        target_modules=["c_attn"],  # GPT-2 attention projection
         bias="none",
     )
     model = get_peft_model(model, lora_cfg)
     trainable, total = model.get_nb_trainable_parameters()
-    check(f"LoRA applied  |  trainable {trainable/1e3:.1f}K / {total/1e6:.1f}M params")
+    check(f"LoRA applied  |  trainable {trainable / 1e3:.1f}K / {total / 1e6:.1f}M params")
 except Exception as e:
     fail("LoRA", e)
 

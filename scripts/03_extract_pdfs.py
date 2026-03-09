@@ -9,6 +9,7 @@ Note: absolute file paths are NOT stored to avoid leaking host directory structu
 Usage:
     python scripts/03_extract_pdfs.py --input-dir /path/to/pdfs
 """
+
 import argparse
 import json
 import logging
