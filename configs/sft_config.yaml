@@ -10,8 +10,7 @@ model_type: AutoModelForCausalLM
 tokenizer_type: AutoTokenizer
 
 # Load the CPT adapter as starting point instead of raw base weights
-# Uncomment after CPT training completes:
-# lora_weights: ./output/cpt/checkpoint-final
+lora_weights: ./output/cpt/checkpoint-2400
 
 # ── precision ────────────────────────────────────────────────────────────────
 load_in_8bit: false
@@ -25,6 +24,8 @@ datasets:
   - path: data/processed/sft_data.jsonl
     type: alpaca              # matches instruction / input / output fields
     # Alternatively switch to "sharegpt" if you convert to conversation format
+  - path: data/processed/sft_qa_llm.jsonl
+    type: alpaca              # LLM-generated Q&A pairs from step 08
 
 dataset_prepared_path: null
 val_set_size: 0.01            # 1 % for eval
