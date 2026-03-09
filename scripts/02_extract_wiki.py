@@ -8,6 +8,7 @@ Each line: {"id": ..., "title": ..., "url": ..., "text": ..., "source": "wikiped
 Usage:
     python scripts/02_extract_wiki.py --dump data/raw/dewiki-latest-pages-articles.xml.bz2 --lang de
 """
+
 import argparse
 import json
 import logging

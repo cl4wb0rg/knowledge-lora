@@ -6,6 +6,7 @@ Usage:
     python scripts/01_download_wiki.py --lang de
     python scripts/01_download_wiki.py --lang de --lang en
 """
+
 import hashlib
 import logging
 import re
@@ -27,9 +28,7 @@ LANG_RE = re.compile(r"^[a-z]{2,5}$")
 
 def _validate_lang(lang: str) -> str:
     if not LANG_RE.match(lang):
-        raise ValueError(
-            f"Invalid language code {lang!r}. Expected 2-5 lowercase ASCII letters."
-        )
+        raise ValueError(f"Invalid language code {lang!r}. Expected 2-5 lowercase ASCII letters.")
     return lang
 
 
@@ -65,7 +64,6 @@ def _md5_file(path: Path) -> str:
         for chunk in iter(lambda: f.read(1 << 20), b""):
             h.update(chunk)
     return h.hexdigest()
-
 
 
 def download_dump(lang: str, out_dir: Path) -> None:
@@ -113,8 +111,8 @@ def download_dump(lang: str, out_dir: Path) -> None:
                     if total_size > 0:
                         pct = min(downloaded * 100 / total_size, 100)
                         print(
-                            f"\r  {pct:5.1f}%  {downloaded/1_048_576:,.0f}"
-                            f" / {total_size/1_048_576:,.0f} MB",
+                            f"\r  {pct:5.1f}%  {downloaded / 1_048_576:,.0f}"
+                            f" / {total_size / 1_048_576:,.0f} MB",
                             end="",
                             flush=True,
                         )

@@ -16,6 +16,7 @@ Usage:
         --output data/processed/sft_data.jsonl \
         --max-docs 200000
 """
+
 import argparse
 import json
 import logging

@@ -11,6 +11,7 @@ Usage:
         --model-id mistralai/Ministral-3-14B-Base-2512 \
         --seq-len 8192
 """
+
 import argparse
 import json
 import logging
@@ -112,7 +113,9 @@ def chunk_generator(
 
     log.info(
         "Tokenization complete: %d docs -> %d chunks (seq_len=%d)",
-        doc_count, chunk_count, seq_len,
+        doc_count,
+        chunk_count,
+        seq_len,
     )
 
 
@@ -158,7 +161,9 @@ def main() -> None:
 
     log.info(
         "Tokenizing: %s (seq_len=%d, batch_size=%d)",
-        jsonl_path, args.seq_len, args.batch_size,
+        jsonl_path,
+        args.seq_len,
+        args.batch_size,
     )
 
     def _gen() -> Generator[dict[str, list[int]], None, None]:
