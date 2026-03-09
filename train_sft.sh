@@ -18,6 +18,9 @@ set -euo pipefail
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$REPO"
 
+# Activate training venv (nohup/cron starts with a bare env)
+source "$REPO/.venv/bin/activate"
+
 # Load HF_TOKEN, optional WANDB_* etc.
 set -a; source .env; set +a
 

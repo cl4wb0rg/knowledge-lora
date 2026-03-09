@@ -5,12 +5,16 @@
 # ═══════════════════════════════════════════════════════════════════════════════
 set -euo pipefail
 
-# Optional: set your HuggingFace token if the model is gated
-# export HF_TOKEN="hf_..."
+REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$REPO"
 
-# Optional: Weights & Biases
-# export WANDB_PROJECT="ministral-14b-lora"
-# export WANDB_RUN_NAME="cpt-de-wiki"
+# Activate training venv (nohup/cron starts with a bare env)
+source "$REPO/.venv/bin/activate"
+
+# Load HF_TOKEN, optional WANDB_* etc.
+set -a; source .env; set +a
+
+export AXOLOTL_DO_NOT_TRACK=1
 
 echo "=== Starting CPT training ==="
 echo "Config : configs/cpt_config.yaml"
