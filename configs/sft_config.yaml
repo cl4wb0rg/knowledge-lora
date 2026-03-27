@@ -51,8 +51,8 @@ lora_fan_in_fan_out: false
 # 3000 steps covers ~48K examples (≈ full QA dataset × 1) in ~5 days.
 num_epochs: 3
 max_steps: 3000
-micro_batch_size: 4
-gradient_accumulation_steps: 4    # effective batch = 4 × 4 = 16
+micro_batch_size: 2
+gradient_accumulation_steps: 8    # effective batch = 2 × 8 = 16
 optimizer: adamw_torch_fused
 lr_scheduler: cosine
 learning_rate: 0.00002            # 2e-5 — lower LR for SFT
@@ -80,10 +80,10 @@ chat_template: mistral_v3_tekken  # Ministral-3-14B uses the tekken tokenizer
 # ── checkpointing & logging ───────────────────────────────────────────────────
 output_dir: ./output/sft
 logging_steps: 10
-eval_steps: 200
+eval_steps: 99999
 save_steps: 200
 save_total_limit: 3
-load_best_model_at_end: true    # for SFT we want the best checkpoint by eval loss
+load_best_model_at_end: false   # disabled — no frequent eval, so no best-model tracking
 metric_for_best_model: eval_loss
 greater_is_better: false
 
